@@ -1,8 +1,10 @@
 "use client";
 import { Printer } from "lucide-react";
+import Image from "next/image";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { aujourdhuiUtc, documentEnRetard, formatDate, formatMontant, formatPct, formatQte, montantMarche, reserveEnRetard } from "@/lib/calculs";
+import logoAnep from "@/assets/logo-anep.png";
 import { chargerDossier } from "@/lib/donnees";
 import { projetCourant } from "@/lib/synthese";
 import type { DossierMarche } from "@/lib/types";
@@ -59,11 +61,14 @@ function Impression() {
 
       <header className="mb-5 border-b-2 border-slate-800 pb-3">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="flex items-start gap-4">
+            <Image src={logoAnep} alt="ANEP" height={48} priority />
+            <div>
             <h1 className="text-lg font-bold">{TITRES[doc] ?? "Document"}</h1>
             <p className="mt-1 font-semibold">Marché n° {m.numero}</p>
             <p>{m.objet}</p>
             <p>Titulaire : {m.entreprise || "—"}</p>
+            </div>
           </div>
           <div className="text-right">
             <p>Montant du marché : {formatMontant(montantMarche(m))} TTC</p>

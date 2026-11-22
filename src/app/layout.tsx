@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Suivi des travaux",
+  title: "Suivi des travaux — ANEP",
   description: "Suivi des marchés de travaux : délais, attachements, documents, décomptes et avancement.",
 };
 

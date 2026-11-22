@@ -1,8 +1,10 @@
 "use client";
-import { Download, HardHat, LogOut, Upload } from "lucide-react";
+import { Download, LogOut, Upload } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type ReactNode } from "react";
+import logoAnep from "@/assets/logo-anep.png";
 import { exporterTout, restaurer } from "@/lib/sauvegarde";
 import { supabaseNavigateur } from "@/lib/supabase/client";
 
@@ -51,9 +53,9 @@ export function EnTete({ children }: { children?: ReactNode }) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-slate-900">
-          <HardHat size={20} className="text-marque-600" />
-          Suivi des travaux
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 font-semibold text-slate-900">
+          <Image src={logoAnep} alt="ANEP" height={36} priority />
+          <span className="hidden border-l border-slate-200 pl-2.5 sm:inline">Suivi des travaux</span>
         </Link>
         <div className="min-w-0 flex-1">{children}</div>
         <button className="btn" onClick={sauvegarder} disabled={occupe} title="Télécharger une sauvegarde JSON de toutes vos données">

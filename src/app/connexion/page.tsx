@@ -1,7 +1,8 @@
 "use client";
-import { HardHat } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import logoAnep from "@/assets/logo-anep.png";
 import { Erreur } from "@/components/ui";
 import { supabaseNavigateur } from "@/lib/supabase/client";
 import { SUPABASE_CONFIGURE } from "@/lib/supabase/env";
@@ -53,8 +54,8 @@ export default function Connexion() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="carte w-full max-w-sm p-6">
-        <div className="mb-6 flex items-center gap-2">
-          <HardHat className="text-marque-600" />
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <Image src={logoAnep} alt="ANEP" height={64} priority />
           <h1 className="text-lg font-semibold">Suivi des travaux</h1>
         </div>
         {!SUPABASE_CONFIGURE && (
