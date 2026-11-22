@@ -3,19 +3,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { PropositionDocument } from "./types";
+import { SchemaParametres, SchemaPropositions, type ParametresCps } from "./schemasIA";
+
+export type { ParametresCps };
 
 const MODELE = "claude-opus-5-5";
-
-const SchemaPropositions = z.object({
-  documents: z.array(
-    z.object({
-      nom: z.string().describe("Intitulé court du document à fournir"),
-      prestation: z.string().describe("Prestation ou lot concerné"),
-      article_cps: z.string().nullable().describe("Article du CPS si identifiable, sinon null"),
-      justification: z.string().describe("Exigence ou motif, en une phrase"),
-    }),
-  ),
-});
 
 const SYSTEME = `Tu assistes un chargé de suivi des travaux d'un marché public de travaux de bâtiment.
 Ta tâche : proposer la liste des documents que l'entreprise titulaire doit fournir (fiches techniques, notes de calcul,
@@ -39,11 +31,14 @@ export type ContenuSource =
   | { type: "pdf"; base64: string; titre: string }
   | { type: "texte"; texte: string; titre: string };
 
-export async function proposerDocuments(
+/** Appel générique à Claude avec un document et une sortie structurée validée par Zod. */
+async function appelerClaude<S extends z.ZodType>(
   source: ContenuSource,
+  systeme: string,
   consigne: string,
-  effort: "medium" | "high" = "medium",
-): Promise<PropositionDocument[]> {
+  schema: S,
+  effort: "medium" | "high",
+): Promise<z.infer<S>> {
   if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
     throw new ErreurIA("Clé ANTHROPIC_API_KEY non configurée sur le serveur", 500);
   }
@@ -69,8 +64,8 @@ export async function proposerDocuments(
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: SYSTEME,
-      output_config: { effort, format: betaZodOutputFormat(SchemaPropositions) },
+      system: systeme,
+      output_config: { effort, format: betaZodOutputFormat(schema) },
       messages: [{ role: "user", content: [bloc, { type: "text", text: consigne }] }],
     });
   } catch (e) {
@@ -85,11 +80,43 @@ export async function proposerDocuments(
   if (reponse.stop_reason === "max_tokens") throw new ErreurIA("Réponse tronquée : document trop long, découpez-le", 422);
   const sortie = reponse.parsed_output;
   if (!sortie) throw new ErreurIA("Réponse illisible, réessayez", 502);
+  return sortie as z.infer<S>;
+}
 
+export async function proposerDocuments(
+  source: ContenuSource,
+  consigne: string,
+  effort: "medium" | "high" = "medium",
+): Promise<PropositionDocument[]> {
+  const sortie = await appelerClaude(source, SYSTEME, consigne, SchemaPropositions, effort);
   return sortie.documents.map((d) => ({
     nom: d.nom.trim(),
     prestation: d.prestation.trim(),
     article_cps: d.article_cps?.trim() || null,
     justification: d.justification.trim(),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Paramètres du marché lus dans le CPS
+// ---------------------------------------------------------------------------
+
+
+
+const SYSTEME_PARAMETRES = `Tu lis le CPS (cahier des prescriptions spéciales) d'un marché public de travaux pour en extraire des paramètres
+financiers et de délai. Règles strictes :
+- Ne renseigne une valeur que si le CPS la fixe explicitement ; sinon valeur = null. Ne déduis jamais une valeur d'un texte
+  réglementaire que le CPS se contente de citer (ex. « conformément au CCAG ») : signale-le dans remarques.
+- Pour chaque valeur, donne l'article et une citation exacte et courte du CPS.
+- Convertis dans l'unité demandée et signale toute conversion ou ambiguïté dans remarques.
+- Pour la révision des prix, recopie la formule et liste les indices avec leur coefficient ; la partie fixe n'est pas un indice.`;
+
+export async function extraireParametres(source: ContenuSource, contexte: string): Promise<ParametresCps> {
+  return appelerClaude(
+    source,
+    SYSTEME_PARAMETRES,
+    `${contexte}\nExtrais les paramètres du marché à partir de ce CPS.`,
+    SchemaParametres,
+    "high",
+  );
 }

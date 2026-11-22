@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ajouterMois,
+  basePenalites,
+  calculerReception,
+  montantMarche,
+  pointsDeVigilance,
   calculerPenalites,
   etatExpiration,
   remboursementAvanceCumule,
@@ -41,6 +45,10 @@ const marche: Marche = {
   avance_debut_remboursement: 0,
   avance_fin_remboursement: 100,
   retenue_remplacee_par_caution: false,
+  penalite_base: "initial_ttc",
+  seuil_avenants: null,
+  delai_garantie_mois: null,
+  date_reception_definitive: null,
   created_at: "",
   updated_at: "",
 };
@@ -57,8 +65,8 @@ const os = (type: OrdreService["type"], date: string, jours = 0): OrdreService =
 });
 
 const bpde: BpdeLigne[] = [
-  { id: "b1", marche_id: "m", ordre: 1, numero: "1", designation: "Béton armé pour semelles", unite: "m3", quantite: 100, prix_unitaire: 1500, montant_importe: null },
-  { id: "b2", marche_id: "m", ordre: 2, numero: "2", designation: "Étanchéité multicouche", unite: "m2", quantite: 500, prix_unitaire: 1700, montant_importe: null },
+  { id: "b1", marche_id: "m", ordre: 1, numero: "1", designation: "Béton armé pour semelles", unite: "m3", quantite: 100, prix_unitaire: 1500, montant_importe: null, avenant_id: null },
+  { id: "b2", marche_id: "m", ordre: 2, numero: "2", designation: "Étanchéité multicouche", unite: "m2", quantite: 500, prix_unitaire: 1700, montant_importe: null, avenant_id: null },
 ];
 
 describe("délais", () => {
@@ -208,5 +216,39 @@ describe("pénalités, avance, garanties", () => {
     expect(etatExpiration(g, versDate("2026-03-01")!)).toBe("proche");
     expect(etatExpiration(g, versDate("2026-03-11")!)).toBe("expiree");
     expect(etatExpiration({ ...g, statut: "Mainlevée" }, versDate("2026-03-11")!)).toBeNull();
+  });
+});
+
+describe("avenants et réception", () => {
+  it("intègre montant et délai des avenants", () => {
+    const m = { ...marche, montant_avenants: 120_000, jours_avenants: 30 };
+    expect(montantMarche(m)).toBe(1_320_000);
+    const d = calculerDelais(m, [os("demarrage", "2026-01-01")], versDate("2026-03-01")!);
+    expect(versIso(d.finPrevue!)).toBe("2026-07-31");
+    expect(retenueGarantie(2_000_000, m)).toBe(92_400); // 7 % du montant avec avenants
+  });
+
+  it("choisit la base des pénalités", () => {
+    const m = { ...marche, montant_avenants: 120_000 };
+    expect(basePenalites(m)).toBe(1_200_000);
+    expect(basePenalites({ ...m, penalite_base: "actuel_ttc" })).toBe(1_320_000);
+    expect(basePenalites({ ...m, penalite_base: "initial_ht" })).toBe(1_000_000);
+  });
+
+  it("calcule la réception définitive et alerte sur les réserves et le seuil d'avenants", () => {
+    const m = { ...marche, date_reception_provisoire: "2026-06-30", delai_garantie_mois: 12, montant_avenants: 150_000, seuil_avenants: 10 };
+    const reserves = [
+      { id: "r1", marche_id: "m", numero: "1", designation: "Joint", localisation: "", responsable: "Entreprise", date_constat: null, echeance: "2026-07-15", statut: "Ouverte" as const, date_levee: null, observations: "", scan_path: null },
+      { id: "r2", marche_id: "m", numero: "2", designation: "Peinture", localisation: "", responsable: "Entreprise", date_constat: null, echeance: null, statut: "Levée" as const, date_levee: "2026-07-10", observations: "", scan_path: null },
+    ];
+    const auj = versDate("2027-05-15")!;
+    const r = calculerReception(m, reserves, auj);
+    expect(versIso(r.dateDefinitive!)).toBe("2027-06-30");
+    expect(r.joursAvantDefinitive).toBe(46);
+    expect(r.enRetard).toBe(1);
+    const msgs = pointsDeVigilance(calculerDelais(m, [], auj), [], [], auj, "Réception provisoire", { marche: m, reserves }).map((p) => p.message);
+    expect(msgs.some((x) => x.includes("réserve(s) non levée(s)"))).toBe(true);
+    expect(msgs.some((x) => x.includes("au-delà du seuil de 10 %"))).toBe(true);
+    expect(msgs.some((x) => x.includes("Réception définitive prévue"))).toBe(true);
   });
 });

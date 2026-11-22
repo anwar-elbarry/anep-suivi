@@ -1,6 +1,6 @@
 "use client";
 import { AlertCircle, AlertTriangle, CheckCircle2, Mail, Phone } from "lucide-react";
-import { dateEffetOS, formatDate, formatMontant, formatPct } from "@/lib/calculs";
+import { dateEffetOS, formatDate, formatMontant, formatPct, montantMarche } from "@/lib/calculs";
 import { syntheseMarche } from "@/lib/synthese";
 import { TYPES_OS } from "@/lib/types";
 import { Barre, Chiffre } from "../ui";
@@ -16,7 +16,7 @@ const COULEUR_OS: Record<string, string> = {
 
 export function OngletApercu({ dossier, allerA }: PropsOnglet) {
   const { marche } = dossier;
-  const s = syntheseMarche(marche, dossier.ordres, dossier.bpde, dossier.attachements, dossier.decomptes, dossier.documents, dossier.garanties);
+  const s = syntheseMarche(marche, dossier.ordres, dossier.bpde, dossier.attachements, dossier.decomptes, dossier.documents, dossier.garanties, dossier.reserves);
   const { delais: d, finances: f, physique: p } = s;
   const j = d.joursRestants;
   const docsValides = dossier.documents.filter((x) => x.statut === "Validé").length;
@@ -24,7 +24,11 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Chiffre label="Montant TTC" valeur={formatMontant(Number(marche.montant_ttc))} />
+        <Chiffre
+          label="Montant TTC"
+          valeur={formatMontant(montantMarche(marche))}
+          sous={marche.montant_avenants ? `dont avenants ${formatMontant(marche.montant_avenants)}` : undefined}
+        />
         <Chiffre
           label="Fin prévue"
           valeur={formatDate(d.finPrevue)}
@@ -55,7 +59,7 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm md:grid-cols-3">
               {(
                 [
-                  ["Montant du marché TTC", Number(marche.montant_ttc)],
+                  ["Montant du marché TTC (avec avenants)", montantMarche(marche)],
                   ["Travaux décomptés", f.cumulTravaux],
                   ["Révision des prix", f.cumulRevision],
                   ["Montant atteint", f.montantAtteint],

@@ -4,9 +4,12 @@ import { modifier } from "@/lib/donnees";
 import type { Marche } from "@/lib/types";
 import { ChampNombre } from "./ui";
 
-type CleNombre = {
-  [K in keyof Marche]: Marche[K] extends number | null ? K : never;
-}[keyof Marche];
+type CleNombre = Exclude<
+  {
+    [K in keyof Marche]-?: Marche[K] extends number | null ? K : never;
+  }[keyof Marche],
+  "montant_avenants" | "jours_avenants"
+>;
 
 /** Champ numérique enregistré directement sur le marché à la sortie du champ. */
 export function ParametreNombre({
@@ -58,7 +61,7 @@ export function ParametreDate({
   aide,
 }: {
   marche: Marche;
-  cle: "date_reception_provisoire" | "avance_date" | "date_debut";
+  cle: "date_reception_provisoire" | "date_reception_definitive" | "avance_date" | "date_debut";
   label: string;
   recharger: () => Promise<void>;
   aide?: string;

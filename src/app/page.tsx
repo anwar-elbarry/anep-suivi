@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { EnTete } from "@/components/EnTete";
 import { FormulaireMarche } from "@/components/FormulaireMarche";
 import { BadgeStatut, Barre, Chiffre, Erreur, Vide } from "@/components/ui";
-import { formatDate, formatMontant, formatPct } from "@/lib/calculs";
+import { formatDate, formatMontant, formatPct, montantMarche } from "@/lib/calculs";
 import { chargerPortefeuille } from "@/lib/donnees";
 import { syntheseMarche } from "@/lib/synthese";
 import { STATUTS_MARCHE, type Marche } from "@/lib/types";
@@ -47,6 +47,7 @@ export default function Accueil() {
         par(donnees.decomptes, m.id),
         par(donnees.documents, m.id),
         par(donnees.garanties, m.id),
+        par(donnees.reserves, m.id),
       ),
     }));
   }, [donnees]);
@@ -65,7 +66,7 @@ export default function Accueil() {
     return {
       ouverts: ouverts.length,
       retard: cartes.filter((c) => c.s.enRetard).length,
-      total: cartes.reduce((s, c) => s + Number(c.marche.montant_ttc), 0),
+      total: cartes.reduce((s, c) => s + montantMarche(c.marche), 0),
       physique: ouverts.length ? ouverts.reduce((s, c) => s + c.s.physique.avancement, 0) / ouverts.length : 0,
     };
   }, [cartes]);
@@ -134,7 +135,7 @@ function CarteMarche({ marche: m, s }: { marche: Marche; s: ReturnType<typeof sy
         <p className="line-clamp-2 text-sm text-slate-700">{m.objet || "—"}</p>
         <p className="mt-1 text-xs text-slate-500">{m.entreprise || "Entreprise non renseignée"}</p>
         <div className="mt-3 flex items-baseline justify-between text-sm">
-          <span className="font-medium tabular-nums">{formatMontant(Number(m.montant_ttc))} TTC</span>
+          <span className="font-medium tabular-nums">{formatMontant(montantMarche(m))} TTC</span>
           <span className="text-xs text-slate-500">
             Fin {formatDate(s.delais.finPrevue)}{" "}
             {j !== null && s.enCours && (

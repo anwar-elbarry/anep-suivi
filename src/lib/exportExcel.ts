@@ -1,6 +1,6 @@
 "use client";
 import * as XLSX from "xlsx";
-import { aujourdhuiUtc, documentEnRetard, etatExpiration, formatDate, montantLigneHT, versIso } from "./calculs";
+import { aujourdhuiUtc, documentEnRetard, etatExpiration, formatDate, montantLigneHT, montantMarche, versIso } from "./calculs";
 import { projetCourant } from "./synthese";
 import { TYPES_OS, type DossierMarche } from "./types";
 
@@ -26,7 +26,9 @@ export function exporterExcel(dossier: DossierMarche) {
     feuille(
       [
         ...entete,
-        ["Montant du marché TTC", Number(m.montant_ttc)],
+        ["Montant initial TTC", Number(m.montant_ttc)],
+        ["Avenants TTC", Number(m.montant_avenants) || 0],
+        ["Montant actuel TTC", montantMarche(m)],
         ["Statut", m.statut],
         ["Délai (mois)", Number(m.duree_mois)],
         ["Démarrage", formatDate(c.delais.dateDemarrage)],
@@ -175,6 +177,27 @@ export function exporterExcel(dossier: DossierMarche) {
       [14, 10, 12, 12, 10, 50],
     ),
     "Ordres de service",
+  );
+
+  XLSX.utils.book_append_sheet(
+    wb,
+    feuille(
+      [["N°", "Date", "Objet", "Variation TTC", "Variation délai (j)"], ...dossier.avenants.map((a) => [a.numero, a.date, a.objet, Number(a.montant_ttc), a.jours_supplementaires])],
+      [6, 12, 60, 16, 16],
+    ),
+    "Avenants",
+  );
+
+  XLSX.utils.book_append_sheet(
+    wb,
+    feuille(
+      [
+        ["N°", "Réserve", "Localisation", "À lever par", "Constat", "Délai", "Statut", "Levée le", "Observations"],
+        ...dossier.reserves.map((r) => [r.numero, r.designation, r.localisation, r.responsable, r.date_constat, r.echeance, r.statut, r.date_levee, r.observations]),
+      ],
+      [6, 50, 20, 16, 12, 12, 10, 12, 40],
+    ),
+    "Réserves",
   );
 
   const nom = `marche-${m.numero.replace(/[^\w-]+/g, "_")}-${versIso(auj)}.xlsx`;

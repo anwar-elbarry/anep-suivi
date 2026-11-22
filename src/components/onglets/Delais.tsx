@@ -2,8 +2,8 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { aujourdhuiUtc, calculerDelais, calculerPenalites, dateEffetOS, formatDate, formatMontant } from "@/lib/calculs";
-import { supprimer } from "@/lib/donnees";
-import { TYPES_OS, type OrdreService } from "@/lib/types";
+import { modifier, supprimer } from "@/lib/donnees";
+import { BASES_PENALITE, TYPES_OS, type OrdreService } from "@/lib/types";
 import { FormulaireLigne, type DefChamp } from "../FormulaireLigne";
 import { ParametreDate, ParametreNombre } from "../ParametreMarche";
 import { Chiffre, Vide } from "../ui";
@@ -44,7 +44,7 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
         />
         <Chiffre label="Fin contractuelle" valeur={formatDate(d.finContractuelle)} sous={`${Number(dossier.marche.duree_mois)} mois`} />
         <Chiffre label="Arrêts" valeur={`${d.joursArret} j`} sous={d.arretEnCours ? "Arrêt en cours" : `${d.arrets.length} période(s)`} alerte={d.arretEnCours} />
-        <Chiffre label="Prolongations" valeur={`${d.joursProlongation} j`} />
+        <Chiffre label="Prolongations" valeur={`${d.joursProlongation + d.joursAvenants} j`} sous={d.joursAvenants ? `dont ${d.joursAvenants} j par avenant` : "par OS"} />
         <Chiffre
           label="Fin prévue"
           valeur={formatDate(d.finPrevue)}
@@ -127,6 +127,23 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
             <ParametreNombre marche={m} cle="penalite_plafond" label="Plafond (% du montant)" recharger={recharger} aide="vide = sans plafond" />
             <ParametreNombre marche={m} cle="penalite_jours_exoneres" label="Jours exonérés" recharger={recharger} vide="zero" aide="retards justifiés, acceptés par le MO" />
             <ParametreDate marche={m} cle="date_reception_provisoire" label="Réception provisoire" recharger={recharger} aide="arrête le décompte du retard" />
+            <label className="col-span-2 block">
+              <span className="etiquette">Base de calcul</span>
+              <select
+                className="champ"
+                value={m.penalite_base}
+                onChange={async (e) => {
+                  await modifier("marches", m.id, { penalite_base: e.target.value });
+                  recharger();
+                }}
+              >
+                {Object.entries(BASES_PENALITE).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <dl className="grid grid-cols-2 content-start gap-x-4 gap-y-2 text-sm">
             <dt className="text-slate-500">Retard arrêté au</dt>
@@ -149,7 +166,7 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
           </dl>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          Base de calcul : montant du marché TTC ({formatMontant(pen.base)}). Taux, plafond, base et jours exonérés sont à reprendre du CPS ; les
+          Base retenue : {BASES_PENALITE[m.penalite_base].toLowerCase()} ({formatMontant(pen.base)}). Taux, plafond, base et jours exonérés sont à reprendre du CPS ; les
           pénalités n&apos;ont pas de valeur par défaut. Elles sont imputées dans le projet de décompte.
         </p>
       </div>

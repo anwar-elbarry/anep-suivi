@@ -8,7 +8,7 @@ import {
   rapprocher,
   situationFinanciere,
 } from "./calculs";
-import type { Attachement, BpdeLigne, Decompte, DocumentAFournir, Garantie, Marche, OrdreService } from "./types";
+import type { Attachement, BpdeLigne, Decompte, DocumentAFournir, Garantie, Marche, OrdreService, Reserve } from "./types";
 
 /** Indicateurs d'un marché, partagés par la page d'accueil et l'aperçu. */
 export function syntheseMarche(
@@ -19,6 +19,7 @@ export function syntheseMarche(
   decomptes: Decompte[],
   documents: DocumentAFournir[],
   garanties: Garantie[] = [],
+  reserves: Reserve[] = [],
   aujourdhui = aujourdhuiUtc(),
 ) {
   const delais = calculerDelais(marche, ordres, aujourdhui);
@@ -30,6 +31,7 @@ export function syntheseMarche(
     garanties,
     penalites,
     marche,
+    reserves,
   });
   const enCours = !["Réception provisoire", "Réception définitive", "Résilié"].includes(marche.statut);
   const enRetard = enCours && delais.joursRestants !== null && delais.joursRestants < 0;
@@ -38,7 +40,7 @@ export function syntheseMarche(
 
 /** Projet de décompte avec les paramètres enregistrés sur le marché (export, impression). */
 export function projetCourant(d: import("./types").DossierMarche, appliquerPenalites = true) {
-  const s = syntheseMarche(d.marche, d.ordres, d.bpde, d.attachements, d.decomptes, d.documents, d.garanties);
+  const s = syntheseMarche(d.marche, d.ordres, d.bpde, d.attachements, d.decomptes, d.documents, d.garanties, d.reserves);
   const projet = projetDecompte(d.marche, s.physique, d.decomptes, s.penalites, appliquerPenalites);
   return { ...s, projet };
 }

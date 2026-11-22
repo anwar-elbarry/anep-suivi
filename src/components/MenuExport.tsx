@@ -9,6 +9,7 @@ const IMPRESSIONS = [
   { doc: "ecarts", label: "Tableau des écarts" },
   { doc: "fiche", label: "Fiche de synthèse" },
   { doc: "documents", label: "Documents à fournir" },
+  { doc: "reserves", label: "Liste des réserves" },
 ];
 
 export function MenuExport({ dossier }: { dossier: DossierMarche }) {

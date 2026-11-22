@@ -67,8 +67,54 @@ export interface Marche {
   avance_debut_remboursement: number;
   avance_fin_remboursement: number;
   retenue_remplacee_par_caution: boolean;
+  penalite_base: BasePenalite;
+  seuil_avenants: number | null;
+  delai_garantie_mois: number | null;
+  date_reception_definitive: string | null;
   created_at: string;
   updated_at: string;
+  /** Calculé au chargement (non stocké) : somme des variations de montant des avenants. */
+  montant_avenants?: number;
+  /** Calculé au chargement (non stocké) : somme des jours accordés par avenant. */
+  jours_avenants?: number;
+}
+
+export const BASES_PENALITE = {
+  initial_ttc: "Montant initial TTC",
+  actuel_ttc: "Montant modifié par avenants TTC",
+  initial_ht: "Montant initial HT",
+  actuel_ht: "Montant modifié par avenants HT",
+} as const;
+export type BasePenalite = keyof typeof BASES_PENALITE;
+
+export interface Avenant {
+  id: string;
+  marche_id: string;
+  numero: string;
+  date: string | null;
+  objet: string;
+  montant_ttc: number;
+  jours_supplementaires: number;
+  observations: string;
+  scan_path: string | null;
+}
+
+export const STATUTS_RESERVE = ["Ouverte", "Levée"] as const;
+export type StatutReserve = (typeof STATUTS_RESERVE)[number];
+
+export interface Reserve {
+  id: string;
+  marche_id: string;
+  numero: string;
+  designation: string;
+  localisation: string;
+  responsable: string;
+  date_constat: string | null;
+  echeance: string | null;
+  statut: StatutReserve;
+  date_levee: string | null;
+  observations: string;
+  scan_path: string | null;
 }
 
 export interface Intervenant {
@@ -113,6 +159,7 @@ export interface BpdeLigne {
   quantite: number;
   prix_unitaire: number | null;
   montant_importe: number | null;
+  avenant_id: string | null;
 }
 
 export interface AttachementLigne {
@@ -212,6 +259,8 @@ export interface DossierMarche {
   documents: DocumentAFournir[];
   decomptes: Decompte[];
   garanties: Garantie[];
+  avenants: Avenant[];
+  reserves: Reserve[];
   activites: Activite[];
 }
 

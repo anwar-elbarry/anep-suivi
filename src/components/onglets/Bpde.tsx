@@ -1,7 +1,7 @@
 "use client";
 import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { formatMontant, montantLigneHT, totalBpdeHT, verifierBpde } from "@/lib/calculs";
+import { formatMontant, montantLigneHT, montantMarche, totalBpdeHT, verifierBpde } from "@/lib/calculs";
 import { inserer, modifier, supprimer } from "@/lib/donnees";
 import type { BpdeLigne } from "@/lib/types";
 import { ImportBpde } from "../ImportBpde";
@@ -44,7 +44,7 @@ export function OngletBpde({ dossier, recharger }: PropsOnglet) {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Chiffre label="Lignes" valeur={bpde.length} />
         <Chiffre label="Total HT" valeur={formatMontant(totalHT)} />
-        <Chiffre label={`Total TTC (TVA ${Number(marche.taux_tva)} %)`} valeur={formatMontant(totalHT * (1 + tva))} sous={`Marché : ${formatMontant(Number(marche.montant_ttc))}`} />
+        <Chiffre label={`Total TTC (TVA ${Number(marche.taux_tva)} %)`} valeur={formatMontant(totalHT * (1 + tva))} sous={`Marché : ${formatMontant(montantMarche(marche))}`} />
         <Chiffre label="Alertes" valeur={alertes.length} alerte={alertes.some((a) => a.niveau === "erreur")} />
       </div>
       {globales.map((a) => (
@@ -88,6 +88,7 @@ export function OngletBpde({ dossier, recharger }: PropsOnglet) {
                 return (
                   <tr key={l.id} className={erreurLigne ? "bg-red-50/60" : a ? "bg-amber-50/60" : ""}>
                     <td>
+                      {l.avenant_id && <span className="mb-1 block text-[10px] font-semibold uppercase text-marque-700">Prix nouveau</span>}
                       <input className="champ px-2 py-1" defaultValue={l.numero} onBlur={(e) => maj(l, "numero", e.target.value.trim())} aria-label="N° de prix" />
                     </td>
                     <td>

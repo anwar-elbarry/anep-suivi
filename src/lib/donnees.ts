@@ -6,8 +6,10 @@ import type {
   BpdeLigne,
   Decompte,
   DocumentAFournir,
+  Avenant,
   DossierMarche,
   Garantie,
+  Reserve,
   Intervenant,
   Marche,
   OrdreService,
@@ -23,7 +25,7 @@ function verifier<T>(res: { data: T | null; error: { message: string } | null })
 
 export async function chargerDossier(id: string): Promise<DossierMarche | null> {
   const sb = supabaseNavigateur();
-  const [m, i, o, p, b, a, d, dc, g, act] = await Promise.all([
+  const [m, i, o, p, b, a, d, dc, g, av, res, act] = await Promise.all([
     sb.from("marches").select("*").eq("id", id).maybeSingle(),
     sb.from("intervenants").select("*").eq("marche_id", id).order("created_at"),
     sb.from("ordres_service").select("*").eq("marche_id", id).order("date_emission", { nullsFirst: false }),
@@ -38,12 +40,17 @@ export async function chargerDossier(id: string): Promise<DossierMarche | null> 
     sb.from("documents").select("*").eq("marche_id", id).order("echeance", { nullsFirst: false }),
     sb.from("decomptes").select("*").eq("marche_id", id).order("date", { nullsFirst: false }).order("created_at"),
     sb.from("garanties").select("*").eq("marche_id", id).order("date_expiration", { nullsFirst: false }),
+    sb.from("avenants").select("*").eq("marche_id", id).order("date", { nullsFirst: false }).order("created_at"),
+    sb.from("reserves").select("*").eq("marche_id", id).order("created_at"),
     sb.from("activites").select("*").eq("marche_id", id).order("created_at", { ascending: false }).limit(15),
   ]);
   const marche = verifier(m) as Marche | null;
   if (!marche) return null;
+  const avenants = verifier(av) as Avenant[];
   return {
-    marche,
+    marche: avecAvenants(marche, avenants),
+    avenants,
+    reserves: verifier(res) as Reserve[],
     intervenants: verifier(i) as Intervenant[],
     ordres: verifier(o) as OrdreService[],
     pvs: verifier(p) as PvReunion[],
@@ -57,9 +64,19 @@ export async function chargerDossier(id: string): Promise<DossierMarche | null> 
 }
 
 /** Données de tous les marchés pour la page d'accueil. */
+/** Ajoute au marché les variations de montant et de délai issues des avenants (champs calculés, non stockés). */
+export function avecAvenants(marche: Marche, avenants: Avenant[]): Marche {
+  const siens = avenants.filter((a) => a.marche_id === marche.id);
+  return {
+    ...marche,
+    montant_avenants: siens.reduce((s, a) => s + (Number(a.montant_ttc) || 0), 0),
+    jours_avenants: siens.reduce((s, a) => s + (Number(a.jours_supplementaires) || 0), 0),
+  };
+}
+
 export async function chargerPortefeuille() {
   const sb = supabaseNavigateur();
-  const [m, o, b, a, d, doc, g] = await Promise.all([
+  const [m, o, b, a, d, doc, g, av, res] = await Promise.all([
     sb.from("marches").select("*").order("created_at", { ascending: false }),
     sb.from("ordres_service").select("*"),
     sb.from("bpde_lignes").select("*"),
@@ -67,9 +84,13 @@ export async function chargerPortefeuille() {
     sb.from("decomptes").select("*"),
     sb.from("documents").select("*"),
     sb.from("garanties").select("*"),
+    sb.from("avenants").select("*"),
+    sb.from("reserves").select("*"),
   ]);
+  const avenants = verifier(av) as Avenant[];
   return {
-    marches: verifier(m) as Marche[],
+    marches: (verifier(m) as Marche[]).map((x) => avecAvenants(x, avenants)),
+    reserves: verifier(res) as Reserve[],
     ordres: verifier(o) as OrdreService[],
     bpde: verifier(b) as BpdeLigne[],
     attachements: verifier(a) as Attachement[],
@@ -89,7 +110,9 @@ type Table =
   | "attachement_lignes"
   | "documents"
   | "decomptes"
-  | "garanties";
+  | "garanties"
+  | "avenants"
+  | "reserves";
 
 export async function inserer<T extends object>(table: Table, valeurs: T | T[]) {
   const res = await supabaseNavigateur().from(table).insert(valeurs).select();

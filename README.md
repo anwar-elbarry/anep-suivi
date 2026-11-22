@@ -51,6 +51,9 @@ Tests des calculs : `npm test`.
 | Pénalités de retard | taux (‰ du montant TTC par jour) × jours de retard non exonérés, limitées au plafond (% du montant). Retard arrêté à la réception provisoire, à défaut à aujourd'hui. Aucun taux par défaut |
 | Remboursement de l'avance | avance × part de l'avancement (cumul travaux TTC / montant) comprise entre le seuil de début et le seuil de fin, linéaire. 0 % et 100 % = au prorata |
 | Projet de décompte | Quantités exécutées × prix BPDE (HT) + TVA − décomptes précédents = travaux de la période ; révision = travaux HT × (K − 1) ; net = travaux + révision − retenue − pénalités − remboursement d'avance de la période |
+| Avenants | Montant actuel = montant initial + Σ variations des avenants (utilisé pour l'avancement financier, le plafond de retenue, l'avance) ; jours d'avenant ajoutés à la fin prévue ; alerte si le cumul dépasse le seuil saisi |
+| Base des pénalités | Au choix : montant initial ou modifié par avenants, TTC ou HT |
+| Réception définitive | Saisie, ou prévue = réception provisoire + délai de garantie ; alerte 60 jours avant |
 | Coefficient K | K = partie fixe + Σ (part × indice actuel / indice de base), 3 indices maximum ; partie fixe = 1 − Σ parts |
 
 ## Hypothèses et limites
@@ -66,6 +69,9 @@ L'application ne connaît ni votre CPS, ni la version du CCAG-T applicable, ni v
 
 ### Fonctions Claude
 
+- **Paramètres du CPS** (bouton dans la fiche marché) : propose délai, TVA, retenue et plafond, taux, plafond et base des pénalités,
+  avance et seuils de remboursement, délai de garantie, indices de révision. Chaque valeur est accompagnée de l'article et d'une citation
+  du CPS ; une valeur que le CPS ne fixe pas explicitement reste vide. Vous cochez ce qui est appliqué.
 - **Depuis un attachement** : propose, par type de prestation, les documents à fournir (fiches techniques, méthodologies,
   PV d'essais, agréments, garanties…).
 - **Depuis le CPS** (PDF, Word .docx ou texte) : propose un document par exigence technique, avec l'article du CPS quand il est
@@ -83,6 +89,12 @@ Menu **Exporter** de la fiche marché :
   fiche de synthèse, liste des documents à fournir. Chaque décompte enregistré s'imprime depuis l'onglet Financier.
 
 Chaque document imprimé porte la mention « document de travail, ne vaut pas décompte officiel ».
+
+## Avenants et réception
+
+- Onglet **Avenants** : variation de montant et de délai, scan de l'avenant, prix nouveaux ajoutés au BPDE (repérés « Prix nouveau »).
+- Onglet **Réception** : dates de réception provisoire et définitive, délai de garantie, liste des réserves (localisation, responsable,
+  délai, levée en un clic, photo), impression de la liste des réserves.
 
 ## Garanties et assurances
 

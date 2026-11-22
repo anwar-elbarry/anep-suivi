@@ -9,11 +9,15 @@ import type {
   Decompte,
   DocumentAFournir,
   IndiceRevision,
+  Reserve,
   Marche,
   OrdreService,
 } from "./types";
 
 const JOUR_MS = 86_400_000;
+
+/** Montant du marché modifié par les avenants (TTC). */
+export const montantMarche = (m: Marche) => (Number(m.montant_ttc) || 0) + (Number(m.montant_avenants) || 0);
 
 export const arrondi2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -77,6 +81,7 @@ export interface Delais {
   joursArret: number;
   arretEnCours: boolean;
   joursProlongation: number;
+  joursAvenants: number;
   finPrevue: Date | null;
   /** > 0 : jours restants ; < 0 : jours de retard. */
   joursRestants: number | null;
@@ -125,6 +130,7 @@ export function calculerDelais(marche: Marche, ordres: OrdreService[], aujourdhu
 
   const joursArret = arrets.reduce((s, a) => s + a.jours, 0);
   const joursProlongation = ordres.reduce((s, o) => s + (Number(o.jours_supplementaires) || 0), 0);
+  const joursAvenants = Number(marche.jours_avenants) || 0;
 
   if (!dateDemarrage) {
     return {
@@ -135,6 +141,7 @@ export function calculerDelais(marche: Marche, ordres: OrdreService[], aujourdhu
       joursArret,
       arretEnCours: ouvert !== null,
       joursProlongation,
+      joursAvenants,
       finPrevue: null,
       joursRestants: null,
       tempsEcoule: 0,
@@ -147,7 +154,7 @@ export function calculerDelais(marche: Marche, ordres: OrdreService[], aujourdhu
   }
 
   const finContractuelle = ajouterMois(dateDemarrage, Number(marche.duree_mois) || 0);
-  const finPrevue = ajouterJours(finContractuelle, joursArret + joursProlongation);
+  const finPrevue = ajouterJours(finContractuelle, joursArret + joursProlongation + joursAvenants);
   const joursRestants = ecartJours(aujourdhui, finPrevue);
 
   const delaiTotal = ecartJours(dateDemarrage, finPrevue) - joursArret;
@@ -162,6 +169,7 @@ export function calculerDelais(marche: Marche, ordres: OrdreService[], aujourdhu
     joursArret,
     arretEnCours: ouvert !== null,
     joursProlongation,
+    joursAvenants,
     finPrevue,
     joursRestants,
     tempsEcoule,
@@ -241,14 +249,15 @@ export function verifierBpde(bpde: BpdeLigne[], marche: Marche): AlerteBpde[] {
     }
   }
 
-  if (bpde.length && Number(marche.montant_ttc) > 0) {
+  const montant = montantMarche(marche);
+  if (bpde.length && montant > 0) {
     const ttc = totalBpdeHT(bpde) * (1 + Number(marche.taux_tva) / 100);
-    const ecart = ttc - Number(marche.montant_ttc);
-    if (Math.abs(ecart) > Math.max(1, Number(marche.montant_ttc) * 0.001)) {
+    const ecart = ttc - montant;
+    if (Math.abs(ecart) > Math.max(1, montant * 0.001)) {
       alertes.push({
         ligneId: null,
         niveau: "attention",
-        message: `Total BPDE TTC (${formatMontant(ttc)}) différent du montant du marché (${formatMontant(Number(marche.montant_ttc))}) : écart ${formatMontant(ecart)}`,
+        message: `Total BPDE TTC (${formatMontant(ttc)}) différent du montant du marché${marche.montant_avenants ? " avec avenants" : ""} (${formatMontant(montant)}) : écart ${formatMontant(ecart)}`,
       });
     }
   }
@@ -378,7 +387,7 @@ export function etatPhysique(bpde: BpdeLigne[], quantites: Map<string, number>):
 export function retenueGarantie(cumulPaye: number, marche: Marche): number {
   if (marche.retenue_remplacee_par_caution) return 0;
   const brute = (Number(marche.taux_retenue) / 100) * Math.max(0, cumulPaye);
-  const plafond = (Number(marche.plafond_retenue) / 100) * Number(marche.montant_ttc);
+  const plafond = (Number(marche.plafond_retenue) / 100) * montantMarche(marche);
   return arrondi2(Math.min(brute, plafond));
 }
 
@@ -395,11 +404,18 @@ export interface Penalites {
   joursRetard: number;
   joursExoneres: number;
   joursPenalisables: number;
-  base: number; // montant du marché TTC
+  base: number; // selon marche.penalite_base
   parJour: number;
   plafond: number | null;
   montant: number;
   plafonne: boolean;
+}
+
+/** Base des pénalités selon le choix du marché (montant initial ou avec avenants, TTC ou HT). */
+export function basePenalites(marche: Marche): number {
+  const choix = marche.penalite_base ?? "initial_ttc";
+  const ttc = choix.startsWith("actuel") ? montantMarche(marche) : Number(marche.montant_ttc) || 0;
+  return choix.endsWith("_ht") ? ttc / (1 + Number(marche.taux_tva) / 100) : ttc;
 }
 
 /**
@@ -414,7 +430,7 @@ export function calculerPenalites(marche: Marche, delais: Delais, aujourdhui: Da
   const joursPenalisables = joursRetard - joursExoneres;
   const taux = Number(marche.penalite_taux_millieme) || 0;
   const parametre = taux > 0;
-  const base = Number(marche.montant_ttc) || 0;
+  const base = basePenalites(marche);
   const parJour = parametre ? (base * taux) / 1000 : 0;
   const brut = parJour * joursPenalisables;
   const plafond =
@@ -447,7 +463,7 @@ export function calculerPenalites(marche: Marche, delais: Delais, aujourdhui: Da
  */
 export function remboursementAvanceCumule(marche: Marche, cumulTravauxTTC: number): number {
   const avance = Number(marche.avance_montant) || 0;
-  const montant = Number(marche.montant_ttc) || 0;
+  const montant = montantMarche(marche);
   if (avance <= 0 || montant <= 0) return 0;
   const debut = Number(marche.avance_debut_remboursement) || 0;
   const fin = Number(marche.avance_fin_remboursement) || 100;
@@ -485,7 +501,7 @@ export function situationFinanciere(marche: Marche, decomptes: Decompte[]): Situ
   const cumulRemboursement = somme((d) => d.remboursement_avance);
   const montantAtteint = cumulTravaux + cumulRevision;
   const retenue = retenueGarantie(montantAtteint, marche);
-  const montant = Number(marche.montant_ttc) || 0;
+  const montant = montantMarche(marche);
   const avance = Number(marche.avance_montant) || 0;
   return {
     montantAtteint: arrondi2(montantAtteint),
@@ -606,6 +622,44 @@ export function projetDecompte(
 }
 
 // ---------------------------------------------------------------------------
+// Réception et réserves
+// ---------------------------------------------------------------------------
+
+export function reserveEnRetard(r: Reserve, aujourdhui: Date): boolean {
+  if (r.statut !== "Ouverte") return false;
+  const e = versDate(r.echeance);
+  return e !== null && e.getTime() < aujourdhui.getTime();
+}
+
+export interface Reception {
+  dateProvisoire: Date | null;
+  /** Date de réception définitive : saisie, à défaut prévue = provisoire + délai de garantie. */
+  dateDefinitive: Date | null;
+  definitivePrononcee: boolean;
+  joursAvantDefinitive: number | null;
+  ouvertes: number;
+  levees: number;
+  enRetard: number;
+}
+
+export function calculerReception(marche: Marche, reserves: Reserve[], aujourdhui: Date): Reception {
+  const dateProvisoire = versDate(marche.date_reception_provisoire);
+  const saisie = versDate(marche.date_reception_definitive);
+  const garantie = Number(marche.delai_garantie_mois);
+  const prevue = dateProvisoire && garantie > 0 ? ajouterMois(dateProvisoire, garantie) : null;
+  const dateDefinitive = saisie ?? prevue;
+  return {
+    dateProvisoire,
+    dateDefinitive,
+    definitivePrononcee: saisie !== null,
+    joursAvantDefinitive: dateDefinitive && !saisie ? ecartJours(aujourdhui, dateDefinitive) : null,
+    ouvertes: reserves.filter((r) => r.statut === "Ouverte").length,
+    levees: reserves.filter((r) => r.statut === "Levée").length,
+    enRetard: reserves.filter((r) => reserveEnRetard(r, aujourdhui)).length,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Garanties et assurances
 // ---------------------------------------------------------------------------
 
@@ -642,10 +696,10 @@ export function pointsDeVigilance(
   attachements: Attachement[],
   aujourdhui: Date,
   statut: Marche["statut"],
-  extra: { garanties?: Garantie[]; penalites?: Penalites; marche?: Marche } = {},
+  extra: { garanties?: Garantie[]; penalites?: Penalites; marche?: Marche; reserves?: Reserve[] } = {},
 ): PointVigilance[] {
   const points: PointVigilance[] = [];
-  const { garanties = [], penalites, marche } = extra;
+  const { garanties = [], penalites, marche, reserves = [] } = extra;
   if (statut === "Non démarré" && delais.sourceDemarrage === "os") {
     points.push({ niveau: "attention", message: "OS de démarrage enregistré : le statut du marché est encore « Non démarré »", onglet: "apercu" });
   }
@@ -692,6 +746,29 @@ export function pointsDeVigilance(
     const enVigueur = (type: string) => garanties.some((g) => g.type === type && g.statut === "En vigueur");
     if (Number(marche.avance_montant) > 0 && !enVigueur("Caution de restitution d'avance")) {
       points.push({ niveau: "attention", message: "Avance enregistrée sans caution de restitution d'avance en vigueur", onglet: "garanties" });
+    }
+    const seuil = Number(marche.seuil_avenants);
+    const initial = Number(marche.montant_ttc);
+    const varAvenants = Number(marche.montant_avenants) || 0;
+    if (seuil > 0 && initial > 0 && Math.abs(varAvenants) / initial > seuil / 100) {
+      points.push({
+        niveau: "erreur",
+        message: `Avenants cumulés : ${formatPct(varAvenants / initial)} du montant initial, au-delà du seuil de ${seuil} %`,
+        onglet: "avenants",
+      });
+    }
+    const rec = calculerReception(marche, reserves, aujourdhui);
+    if (rec.enRetard) points.push({ niveau: "erreur", message: `${rec.enRetard} réserve(s) non levée(s) dans le délai`, onglet: "reception" });
+    else if (rec.ouvertes) points.push({ niveau: "attention", message: `${rec.ouvertes} réserve(s) ouverte(s)`, onglet: "reception" });
+    if (rec.joursAvantDefinitive !== null && rec.joursAvantDefinitive <= 60) {
+      points.push({
+        niveau: "attention",
+        message:
+          rec.joursAvantDefinitive < 0
+            ? `Réception définitive prévue le ${formatDate(rec.dateDefinitive)} non prononcée`
+            : `Réception définitive prévue le ${formatDate(rec.dateDefinitive)} : préparer la levée des réserves et la mainlevée des garanties`,
+        onglet: "reception",
+      });
     }
     if (marche.retenue_remplacee_par_caution && !enVigueur("Caution de retenue de garantie")) {
       points.push({ niveau: "attention", message: "Retenue remplacée par une caution, mais aucune caution de retenue en vigueur", onglet: "garanties" });

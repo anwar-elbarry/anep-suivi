@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ErreurIA, proposerDocuments, type ContenuSource } from "@/lib/ia";
+import { lireCps } from "@/lib/cps";
+import { ErreurIA, proposerDocuments } from "@/lib/ia";
 import { supabaseServeur } from "@/lib/supabase/server";
 
 export const maxDuration = 300;
@@ -19,43 +20,11 @@ export async function POST(req: Request) {
   if (!corps.success) return NextResponse.json({ erreur: "Requête invalide" }, { status: 400 });
   const { marcheId, chemin } = corps.data;
 
-  // Le fichier doit être rangé sous <user_id>/<marche_id>/ (la RLS du stockage le garantit aussi).
-  if (!chemin.startsWith(`${auth.user.id}/${marcheId}/`)) {
-    return NextResponse.json({ erreur: "Chemin non autorisé" }, { status: 403 });
-  }
-
   const { data: marche } = await supabase.from("marches").select("numero, objet").eq("id", marcheId).maybeSingle();
   if (!marche) return NextResponse.json({ erreur: "Marché introuvable" }, { status: 404 });
 
-  const { data: fichier, error } = await supabase.storage.from("scans").download(chemin);
-  if (error || !fichier) return NextResponse.json({ erreur: "CPS introuvable dans le stockage" }, { status: 404 });
-
-  const nom = chemin.split("/").pop() ?? "CPS";
-  const extension = nom.toLowerCase().split(".").pop();
-  const octets = Buffer.from(await fichier.arrayBuffer());
-
-  let source: ContenuSource;
   try {
-    if (extension === "pdf") {
-      source = { type: "pdf", base64: octets.toString("base64"), titre: nom };
-    } else if (extension === "docx") {
-      const mammoth = await import("mammoth");
-      const { value } = await mammoth.extractRawText({ buffer: octets });
-      source = { type: "texte", texte: value, titre: nom };
-    } else if (extension === "txt") {
-      source = { type: "texte", texte: octets.toString("utf8"), titre: nom };
-    } else {
-      return NextResponse.json({ erreur: "Format non pris en charge : PDF, Word (.docx) ou texte" }, { status: 415 });
-    }
-  } catch {
-    return NextResponse.json({ erreur: "Lecture du fichier impossible" }, { status: 422 });
-  }
-
-  if (source.type === "texte" && source.texte.trim().length < 50) {
-    return NextResponse.json({ erreur: "Le document ne contient pas de texte exploitable" }, { status: 422 });
-  }
-
-  try {
+    const source = await lireCps(supabase, auth.user.id, marcheId, chemin);
     const documents = await proposerDocuments(
       source,
       `Marché ${marche.numero} : ${marche.objet}.

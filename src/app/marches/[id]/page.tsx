@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { EnTete } from "@/components/EnTete";
 import { FormulaireMarche } from "@/components/FormulaireMarche";
 import { MenuExport } from "@/components/MenuExport";
+import { ParametresCpsBouton } from "@/components/ParametresCps";
 import { OngletApercu } from "@/components/onglets/Apercu";
 import { OngletAttachements } from "@/components/onglets/Attachements";
 import { OngletBpde } from "@/components/onglets/Bpde";
@@ -14,11 +15,13 @@ import { OngletDelais } from "@/components/onglets/Delais";
 import { OngletDocuments } from "@/components/onglets/Documents";
 import { OngletFinancier } from "@/components/onglets/Financier";
 import { OngletGaranties } from "@/components/onglets/Garanties";
+import { OngletAvenants } from "@/components/onglets/Avenants";
+import { OngletReception } from "@/components/onglets/Reception";
 import { OngletIntervenants } from "@/components/onglets/Intervenants";
 import { OngletPhysique } from "@/components/onglets/Physique";
 import { OngletPv } from "@/components/onglets/Pv";
 import { BadgeStatut, Erreur } from "@/components/ui";
-import { formatMontant } from "@/lib/calculs";
+import { formatMontant, montantMarche } from "@/lib/calculs";
 import { chargerDossier, supprimer } from "@/lib/donnees";
 import type { PropsOnglet } from "@/components/onglets/types";
 import type { DossierMarche } from "@/lib/types";
@@ -32,6 +35,8 @@ const ONGLETS = [
   { id: "documents", label: "Documents à fournir" },
   { id: "financier", label: "Financier" },
   { id: "garanties", label: "Garanties" },
+  { id: "avenants", label: "Avenants" },
+  { id: "reception", label: "Réception" },
   { id: "physique", label: "État physique" },
   { id: "decompte", label: "Décompte" },
   { id: "bpde", label: "BPDE et prix" },
@@ -103,11 +108,13 @@ function FicheMarche() {
                 </div>
                 <p className="mt-0.5 text-sm text-slate-600">{dossier.marche.objet}</p>
                 <p className="text-xs text-slate-500">
-                  {dossier.marche.entreprise || "Entreprise non renseignée"} · {formatMontant(Number(dossier.marche.montant_ttc))} TTC ·{" "}
+                  {dossier.marche.entreprise || "Entreprise non renseignée"} · {formatMontant(montantMarche(dossier.marche))} TTC
+                  {dossier.marche.montant_avenants ? " (avec avenants)" : ""} ·{" "}
                   {Number(dossier.marche.duree_mois)} mois
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <ParametresCpsBouton marche={dossier.marche} recharger={recharger} />
                 <MenuExport dossier={dossier} />
                 <button className="btn" onClick={() => setEdition(true)}>
                   <Pencil size={14} /> Modifier
@@ -141,6 +148,8 @@ function FicheMarche() {
             {onglet === "documents" && <OngletDocuments {...props} />}
             {onglet === "financier" && <OngletFinancier {...props} />}
             {onglet === "garanties" && <OngletGaranties {...props} />}
+            {onglet === "avenants" && <OngletAvenants {...props} />}
+            {onglet === "reception" && <OngletReception {...props} />}
             {onglet === "physique" && <OngletPhysique {...props} />}
             {onglet === "decompte" && <OngletDecompte {...props} />}
             {onglet === "bpde" && <OngletBpde {...props} />}

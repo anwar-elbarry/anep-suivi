@@ -2,7 +2,7 @@
 import { Printer } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
-import { aujourdhuiUtc, documentEnRetard, formatDate, formatMontant, formatPct, formatQte } from "@/lib/calculs";
+import { aujourdhuiUtc, documentEnRetard, formatDate, formatMontant, formatPct, formatQte, montantMarche, reserveEnRetard } from "@/lib/calculs";
 import { chargerDossier } from "@/lib/donnees";
 import { projetCourant } from "@/lib/synthese";
 import type { DossierMarche } from "@/lib/types";
@@ -12,6 +12,7 @@ const TITRES: Record<string, string> = {
   ecarts: "Tableau des écarts de quantités",
   fiche: "Fiche de synthèse du marché",
   documents: "Liste des documents à fournir",
+  reserves: "Liste des réserves",
 };
 
 export default function PageImpression() {
@@ -65,7 +66,8 @@ function Impression() {
             <p>Titulaire : {m.entreprise || "—"}</p>
           </div>
           <div className="text-right">
-            <p>Montant du marché : {formatMontant(Number(m.montant_ttc))} TTC</p>
+            <p>Montant du marché : {formatMontant(montantMarche(m))} TTC</p>
+            {m.montant_avenants ? <p>dont avenants : {formatMontant(m.montant_avenants)}</p> : null}
             <p>Édité le {formatDate(auj)}</p>
           </div>
         </div>
@@ -76,6 +78,7 @@ function Impression() {
       {doc === "ecarts" && <Ecarts c={c} />}
       {doc === "fiche" && <Fiche dossier={dossier} c={c} />}
       {doc === "documents" && <Documents dossier={dossier} />}
+      {doc === "reserves" && <Reserves dossier={dossier} />}
 
       <footer className="mt-6 border-t border-slate-300 pt-2 text-[10px] text-slate-600">
         Document de travail établi à partir des données saisies dans l&apos;outil de suivi. Il ne vaut ni décompte officiel ni acceptation des
@@ -348,6 +351,43 @@ function Documents({ dossier }: { dossier: DossierMarche }) {
         {docs.length} document(s), dont {docs.filter((d) => documentEnRetard(d, auj)).length} en retard et {docs.filter((d) => d.statut === "Validé").length}{" "}
         validé(s).
       </p>
+    </>
+  );
+}
+
+function Reserves({ dossier }: { dossier: DossierMarche }) {
+  const auj = aujourdhuiUtc();
+  const liste = [...dossier.reserves].sort((a, b) => a.numero.localeCompare(b.numero, "fr", { numeric: true }));
+  return (
+    <>
+      <p className="mb-3">
+        Réception provisoire : {formatDate(dossier.marche.date_reception_provisoire)} — {liste.filter((r) => r.statut === "Ouverte").length} réserve(s)
+        ouverte(s), {liste.filter((r) => r.statut === "Levée").length} levée(s).
+      </p>
+      <Tableau entetes={["N°", "Réserve", "Localisation", "Par", "Délai de levée", "Statut", "Levée le"]}>
+        {liste.map((r) => (
+          <tr key={r.id} className={reserveEnRetard(r, auj) ? "font-semibold" : ""}>
+            <td>{r.numero}</td>
+            <td>{r.designation}</td>
+            <td>{r.localisation}</td>
+            <td>{r.responsable}</td>
+            <td>
+              {formatDate(r.echeance)}
+              {reserveEnRetard(r, auj) && " (dépassé)"}
+            </td>
+            <td>{r.statut}</td>
+            <td>{formatDate(r.date_levee)}</td>
+          </tr>
+        ))}
+      </Tableau>
+      <div className="mt-8 grid grid-cols-2 gap-4">
+        {["Pour le maître d'ouvrage", "Pour le titulaire"].map((t) => (
+          <div key={t} className="h-24 border border-slate-400 p-2">
+            <p className="font-semibold">{t}</p>
+            <p className="mt-1 text-slate-500">Nom, date et signature</p>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
