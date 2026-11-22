@@ -7,6 +7,7 @@ import type {
   Decompte,
   DocumentAFournir,
   DossierMarche,
+  Garantie,
   Intervenant,
   Marche,
   OrdreService,
@@ -22,7 +23,7 @@ function verifier<T>(res: { data: T | null; error: { message: string } | null })
 
 export async function chargerDossier(id: string): Promise<DossierMarche | null> {
   const sb = supabaseNavigateur();
-  const [m, i, o, p, b, a, d, dc, act] = await Promise.all([
+  const [m, i, o, p, b, a, d, dc, g, act] = await Promise.all([
     sb.from("marches").select("*").eq("id", id).maybeSingle(),
     sb.from("intervenants").select("*").eq("marche_id", id).order("created_at"),
     sb.from("ordres_service").select("*").eq("marche_id", id).order("date_emission", { nullsFirst: false }),
@@ -36,6 +37,7 @@ export async function chargerDossier(id: string): Promise<DossierMarche | null> 
       .order("ordre", { referencedTable: "attachement_lignes" }),
     sb.from("documents").select("*").eq("marche_id", id).order("echeance", { nullsFirst: false }),
     sb.from("decomptes").select("*").eq("marche_id", id).order("date", { nullsFirst: false }).order("created_at"),
+    sb.from("garanties").select("*").eq("marche_id", id).order("date_expiration", { nullsFirst: false }),
     sb.from("activites").select("*").eq("marche_id", id).order("created_at", { ascending: false }).limit(15),
   ]);
   const marche = verifier(m) as Marche | null;
@@ -49,6 +51,7 @@ export async function chargerDossier(id: string): Promise<DossierMarche | null> 
     attachements: verifier(a) as Attachement[],
     documents: verifier(d) as DocumentAFournir[],
     decomptes: verifier(dc) as Decompte[],
+    garanties: verifier(g) as Garantie[],
     activites: verifier(act) as Activite[],
   };
 }
@@ -56,13 +59,14 @@ export async function chargerDossier(id: string): Promise<DossierMarche | null> 
 /** Données de tous les marchés pour la page d'accueil. */
 export async function chargerPortefeuille() {
   const sb = supabaseNavigateur();
-  const [m, o, b, a, d, doc] = await Promise.all([
+  const [m, o, b, a, d, doc, g] = await Promise.all([
     sb.from("marches").select("*").order("created_at", { ascending: false }),
     sb.from("ordres_service").select("*"),
     sb.from("bpde_lignes").select("*"),
     sb.from("attachements").select("*, attachement_lignes(*)"),
     sb.from("decomptes").select("*"),
     sb.from("documents").select("*"),
+    sb.from("garanties").select("*"),
   ]);
   return {
     marches: verifier(m) as Marche[],
@@ -71,6 +75,7 @@ export async function chargerPortefeuille() {
     attachements: verifier(a) as Attachement[],
     decomptes: verifier(d) as Decompte[],
     documents: verifier(doc) as DocumentAFournir[],
+    garanties: verifier(g) as Garantie[],
   };
 }
 
@@ -83,7 +88,8 @@ type Table =
   | "attachements"
   | "attachement_lignes"
   | "documents"
-  | "decomptes";
+  | "decomptes"
+  | "garanties";
 
 export async function inserer<T extends object>(table: Table, valeurs: T | T[]) {
   const res = await supabaseNavigateur().from(table).insert(valeurs).select();

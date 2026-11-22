@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   ajouterMois,
+  calculerPenalites,
+  etatExpiration,
+  remboursementAvanceCumule,
   calculerDelais,
   coefficientK,
   etatPhysique,
@@ -29,6 +32,15 @@ const marche: Marche = {
   plafond_retenue: 7,
   indices_revision: [],
   attachements_cumulatifs: false,
+  penalite_taux_millieme: null,
+  penalite_plafond: null,
+  penalite_jours_exoneres: 0,
+  date_reception_provisoire: null,
+  avance_montant: 0,
+  avance_date: null,
+  avance_debut_remboursement: 0,
+  avance_fin_remboursement: 100,
+  retenue_remplacee_par_caution: false,
   created_at: "",
   updated_at: "",
 };
@@ -130,7 +142,7 @@ describe("finances", () => {
     const m = { ...marche, indices_revision: [{ nom: "A", part: 0.85, base: 100, actuel: 110 }] };
     const physique = etatPhysique(bpde, new Map([["b1", 100]])); // 150 000 HT
     const precedents: Decompte[] = [
-      { id: "d1", marche_id: "m", numero: "1", date: null, montant_travaux: 120_000, montant_revision: 0, coefficient_k: null, observations: "" },
+      { id: "d1", marche_id: "m", numero: "1", date: null, montant_travaux: 120_000, montant_revision: 0, coefficient_k: null, montant_penalites: 0, remboursement_avance: 0, retenue_garantie: null, net_a_payer: null, observations: "" },
     ];
     const p = projetDecompte(m, physique, precedents);
     expect(p.cumulExecuteTTC).toBe(180_000);
@@ -142,5 +154,59 @@ describe("finances", () => {
     expect(p.netAPayer).toBe(58_590);
     const s = situationFinanciere(m, precedents);
     expect(s.part).toBeCloseTo(0.1, 9);
+  });
+});
+
+describe("pénalités, avance, garanties", () => {
+  const ordres = [os("demarrage", "2026-01-01")]; // fin prévue 2026-07-01
+
+  it("calcule les pénalités avec exonération et plafond", () => {
+    const m = { ...marche, penalite_taux_millieme: 1, penalite_plafond: 10, penalite_jours_exoneres: 5 };
+    const auj = versDate("2026-07-31")!; // 30 j de retard
+    const p = calculerPenalites(m, calculerDelais(m, ordres, auj), auj);
+    expect(p.joursRetard).toBe(30);
+    expect(p.joursPenalisables).toBe(25);
+    expect(p.parJour).toBe(1_200);
+    expect(p.montant).toBe(30_000);
+    const tard = versDate("2027-01-01")!;
+    const p2 = calculerPenalites(m, calculerDelais(m, ordres, tard), tard);
+    expect(p2.plafonne).toBe(true);
+    expect(p2.montant).toBe(120_000);
+  });
+
+  it("arrête le retard à la réception provisoire et ne pénalise pas sans taux", () => {
+    const m = { ...marche, penalite_taux_millieme: 1, date_reception_provisoire: "2026-07-11" };
+    const auj = versDate("2026-12-31")!;
+    expect(calculerPenalites(m, calculerDelais(m, ordres, auj), auj).joursRetard).toBe(10);
+    const sansTaux = calculerPenalites(marche, calculerDelais(marche, ordres, auj), auj);
+    expect(sansTaux.parametre).toBe(false);
+    expect(sansTaux.montant).toBe(0);
+  });
+
+  it("rembourse l'avance entre deux seuils", () => {
+    const m = { ...marche, avance_montant: 120_000, avance_debut_remboursement: 20, avance_fin_remboursement: 80 };
+    expect(remboursementAvanceCumule(m, 120_000)).toBe(0); // 10 %
+    expect(remboursementAvanceCumule(m, 600_000)).toBe(60_000); // 50 % : à mi-parcours
+    expect(remboursementAvanceCumule(m, 1_100_000)).toBe(120_000);
+  });
+
+  it("intègre pénalités, remboursement d'avance et retenue remplacée par caution", () => {
+    const m = { ...marche, avance_montant: 120_000, retenue_remplacee_par_caution: true, penalite_taux_millieme: 1 };
+    const physique = etatPhysique(bpde, new Map([["b1", 100]])); // 150 000 HT = 180 000 TTC = 15 %
+    const auj = versDate("2026-07-11")!;
+    const pen = calculerPenalites(m, calculerDelais(m, ordres, auj), auj); // 10 j × 1 200
+    const p = projetDecompte(m, physique, [], pen);
+    expect(p.retenuePeriode).toBe(0);
+    expect(p.penalitesPeriode).toBe(12_000);
+    expect(p.remboursementPeriode).toBe(18_000); // prorata 15 % de l'avance
+    expect(p.netAPayer).toBe(180_000 - 12_000 - 18_000);
+    expect(projetDecompte(m, physique, [], pen, false).penalitesPeriode).toBe(0);
+  });
+
+  it("signale les garanties expirées ou proches de l'échéance", () => {
+    const g = { id: "g", marche_id: "m", type: "Assurance TRC", organisme: "", reference: "", montant: null, date_emission: null, date_expiration: "2026-03-10", statut: "En vigueur" as const, observations: "", scan_path: null };
+    expect(etatExpiration(g, versDate("2026-03-01")!)).toBe("proche");
+    expect(etatExpiration(g, versDate("2026-03-11")!)).toBe("expiree");
+    expect(etatExpiration({ ...g, statut: "Mainlevée" }, versDate("2026-03-11")!)).toBeNull();
   });
 });

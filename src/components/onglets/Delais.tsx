@@ -1,10 +1,11 @@
 "use client";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { aujourdhuiUtc, calculerDelais, dateEffetOS, formatDate } from "@/lib/calculs";
+import { aujourdhuiUtc, calculerDelais, calculerPenalites, dateEffetOS, formatDate, formatMontant } from "@/lib/calculs";
 import { supprimer } from "@/lib/donnees";
 import { TYPES_OS, type OrdreService } from "@/lib/types";
 import { FormulaireLigne, type DefChamp } from "../FormulaireLigne";
+import { ParametreDate, ParametreNombre } from "../ParametreMarche";
 import { Chiffre, Vide } from "../ui";
 import type { PropsOnglet } from "./types";
 
@@ -27,7 +28,10 @@ const COULEURS: Record<string, string> = {
 
 export function OngletDelais({ dossier, recharger }: PropsOnglet) {
   const [edite, setEdite] = useState<Partial<OrdreService> | null>(null);
-  const d = calculerDelais(dossier.marche, dossier.ordres, aujourdhuiUtc());
+  const auj = aujourdhuiUtc();
+  const d = calculerDelais(dossier.marche, dossier.ordres, auj);
+  const pen = calculerPenalites(dossier.marche, d, auj);
+  const m = dossier.marche;
   const ordres = [...dossier.ordres].sort((a, b) => (dateEffetOS(a)?.getTime() ?? 0) - (dateEffetOS(b)?.getTime() ?? 0));
 
   return (
@@ -115,6 +119,41 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
           </table>
         )}
       </div>
+      <div className="carte p-4">
+        <h2 className="mb-3 font-semibold">Pénalités de retard</h2>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
+            <ParametreNombre marche={m} cle="penalite_taux_millieme" label="Taux (‰ du montant par jour)" recharger={recharger} aide="ex. 1 pour 1/1000" />
+            <ParametreNombre marche={m} cle="penalite_plafond" label="Plafond (% du montant)" recharger={recharger} aide="vide = sans plafond" />
+            <ParametreNombre marche={m} cle="penalite_jours_exoneres" label="Jours exonérés" recharger={recharger} vide="zero" aide="retards justifiés, acceptés par le MO" />
+            <ParametreDate marche={m} cle="date_reception_provisoire" label="Réception provisoire" recharger={recharger} aide="arrête le décompte du retard" />
+          </div>
+          <dl className="grid grid-cols-2 content-start gap-x-4 gap-y-2 text-sm">
+            <dt className="text-slate-500">Retard arrêté au</dt>
+            <dd className="font-medium">
+              {formatDate(pen.dateReference)} {pen.arreteeALaReception ? "(réception)" : "(aujourd'hui)"}
+            </dd>
+            <dt className="text-slate-500">Jours de retard</dt>
+            <dd className="font-medium tabular-nums">{pen.joursRetard} j</dd>
+            <dt className="text-slate-500">Jours pénalisables</dt>
+            <dd className="font-medium tabular-nums">{pen.joursPenalisables} j</dd>
+            <dt className="text-slate-500">Pénalité par jour</dt>
+            <dd className="font-medium tabular-nums">{pen.parametre ? formatMontant(pen.parJour) : "taux non renseigné"}</dd>
+            <dt className="text-slate-500">Plafond</dt>
+            <dd className="font-medium tabular-nums">{pen.plafond === null ? "—" : formatMontant(pen.plafond)}</dd>
+            <dt className="font-semibold">Pénalités encourues</dt>
+            <dd className={`font-semibold tabular-nums ${pen.montant > 0 ? "text-red-600" : ""}`}>
+              {formatMontant(pen.montant)}
+              {pen.plafonne && " (plafond atteint)"}
+            </dd>
+          </dl>
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          Base de calcul : montant du marché TTC ({formatMontant(pen.base)}). Taux, plafond, base et jours exonérés sont à reprendre du CPS ; les
+          pénalités n&apos;ont pas de valeur par défaut. Elles sont imputées dans le projet de décompte.
+        </p>
+      </div>
+
       <p className="text-xs text-slate-500">
         Règle : fin prévue = date d&apos;effet de l&apos;OS de démarrage + délai contractuel + jours d&apos;arrêt (de l&apos;OS d&apos;arrêt à
         l&apos;OS de reprise ; un arrêt non repris court jusqu&apos;à aujourd&apos;hui) + jours de prolongation. Vérifiez la règle de

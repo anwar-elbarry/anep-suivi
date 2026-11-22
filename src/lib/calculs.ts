@@ -4,6 +4,7 @@
  */
 import type {
   Attachement,
+  Garantie,
   BpdeLigne,
   Decompte,
   DocumentAFournir,
@@ -375,10 +376,90 @@ export function etatPhysique(bpde: BpdeLigne[], quantites: Map<string, number>):
 // ---------------------------------------------------------------------------
 
 export function retenueGarantie(cumulPaye: number, marche: Marche): number {
+  if (marche.retenue_remplacee_par_caution) return 0;
   const brute = (Number(marche.taux_retenue) / 100) * Math.max(0, cumulPaye);
   const plafond = (Number(marche.plafond_retenue) / 100) * Number(marche.montant_ttc);
   return arrondi2(Math.min(brute, plafond));
 }
+
+// ---------------------------------------------------------------------------
+// Pénalités de retard
+// ---------------------------------------------------------------------------
+
+export interface Penalites {
+  /** Taux renseigné sur le marché. */
+  parametre: boolean;
+  /** Date à laquelle le retard est arrêté : réception provisoire, à défaut aujourd'hui. */
+  dateReference: Date;
+  arreteeALaReception: boolean;
+  joursRetard: number;
+  joursExoneres: number;
+  joursPenalisables: number;
+  base: number; // montant du marché TTC
+  parJour: number;
+  plafond: number | null;
+  montant: number;
+  plafonne: boolean;
+}
+
+/**
+ * Pénalités = taux (‰ par jour) × montant du marché × jours de retard non exonérés, limitées au plafond (% du marché).
+ * Taux, plafond et base sont à reprendre du CPS.
+ */
+export function calculerPenalites(marche: Marche, delais: Delais, aujourdhui: Date): Penalites {
+  const reception = versDate(marche.date_reception_provisoire);
+  const dateReference = reception ?? aujourdhui;
+  const joursRetard = delais.finPrevue ? Math.max(0, ecartJours(delais.finPrevue, dateReference)) : 0;
+  const joursExoneres = Math.min(joursRetard, Math.max(0, Number(marche.penalite_jours_exoneres) || 0));
+  const joursPenalisables = joursRetard - joursExoneres;
+  const taux = Number(marche.penalite_taux_millieme) || 0;
+  const parametre = taux > 0;
+  const base = Number(marche.montant_ttc) || 0;
+  const parJour = parametre ? (base * taux) / 1000 : 0;
+  const brut = parJour * joursPenalisables;
+  const plafond =
+    marche.penalite_plafond !== null && marche.penalite_plafond !== undefined && Number(marche.penalite_plafond) > 0
+      ? (base * Number(marche.penalite_plafond)) / 100
+      : null;
+  const montant = plafond !== null ? Math.min(brut, plafond) : brut;
+  return {
+    parametre,
+    dateReference,
+    arreteeALaReception: reception !== null,
+    joursRetard,
+    joursExoneres,
+    joursPenalisables,
+    base,
+    parJour: arrondi2(parJour),
+    plafond: plafond === null ? null : arrondi2(plafond),
+    montant: arrondi2(montant),
+    plafonne: plafond !== null && brut > plafond,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Avance
+// ---------------------------------------------------------------------------
+
+/**
+ * Remboursement cumulé de l'avance : linéaire entre deux seuils d'avancement des travaux
+ * (cumul des travaux TTC / montant du marché). Seuils 0 % et 100 % = remboursement au prorata.
+ */
+export function remboursementAvanceCumule(marche: Marche, cumulTravauxTTC: number): number {
+  const avance = Number(marche.avance_montant) || 0;
+  const montant = Number(marche.montant_ttc) || 0;
+  if (avance <= 0 || montant <= 0) return 0;
+  const debut = Number(marche.avance_debut_remboursement) || 0;
+  const fin = Number(marche.avance_fin_remboursement) || 100;
+  if (fin <= debut) return 0;
+  const pct = (Math.max(0, cumulTravauxTTC) / montant) * 100;
+  const part = Math.min(1, Math.max(0, (pct - debut) / (fin - debut)));
+  return arrondi2(avance * part);
+}
+
+// ---------------------------------------------------------------------------
+// Situation financière
+// ---------------------------------------------------------------------------
 
 export interface SituationFinanciere {
   montantAtteint: number; // TTC, travaux + révision
@@ -386,23 +467,38 @@ export interface SituationFinanciere {
   cumulRevision: number;
   part: number; // montant atteint / montant du marché
   retenue: number;
+  cumulPenalites: number;
+  avance: number;
+  cumulRemboursement: number;
+  avanceRestante: number;
   netApresRetenue: number;
+  /** Montant atteint − retenue − pénalités − remboursements d'avance. */
+  netApresDeductions: number;
   reste: number; // montant du marché - montant atteint
 }
 
 export function situationFinanciere(marche: Marche, decomptes: Decompte[]): SituationFinanciere {
-  const cumulTravaux = decomptes.reduce((s, d) => s + (Number(d.montant_travaux) || 0), 0);
-  const cumulRevision = decomptes.reduce((s, d) => s + (Number(d.montant_revision) || 0), 0);
+  const somme = (f: (d: Decompte) => number) => decomptes.reduce((s, d) => s + (Number(f(d)) || 0), 0);
+  const cumulTravaux = somme((d) => d.montant_travaux);
+  const cumulRevision = somme((d) => d.montant_revision);
+  const cumulPenalites = somme((d) => d.montant_penalites);
+  const cumulRemboursement = somme((d) => d.remboursement_avance);
   const montantAtteint = cumulTravaux + cumulRevision;
   const retenue = retenueGarantie(montantAtteint, marche);
   const montant = Number(marche.montant_ttc) || 0;
+  const avance = Number(marche.avance_montant) || 0;
   return {
     montantAtteint: arrondi2(montantAtteint),
     cumulTravaux: arrondi2(cumulTravaux),
     cumulRevision: arrondi2(cumulRevision),
     part: montant > 0 ? montantAtteint / montant : 0,
     retenue,
+    cumulPenalites: arrondi2(cumulPenalites),
+    avance: arrondi2(avance),
+    cumulRemboursement: arrondi2(cumulRemboursement),
+    avanceRestante: arrondi2(avance - cumulRemboursement),
     netApresRetenue: arrondi2(montantAtteint - retenue),
+    netApresDeductions: arrondi2(montantAtteint - retenue - cumulPenalites - cumulRemboursement),
     reste: arrondi2(montant - montantAtteint),
   };
 }
@@ -445,6 +541,12 @@ export interface ProjetDecompte {
   retenuePrecedente: number;
   retenueCumulee: number;
   retenuePeriode: number;
+  penalitesCumulees: number;
+  penalitesPrecedentes: number;
+  penalitesPeriode: number;
+  remboursementCumule: number;
+  remboursementPrecedent: number;
+  remboursementPeriode: number;
   netAPayer: number;
 }
 
@@ -452,24 +554,32 @@ export function projetDecompte(
   marche: Marche,
   physique: EtatPhysique,
   decomptes: Decompte[],
+  penalites: Penalites | null = null,
+  appliquerPenalites = true,
 ): ProjetDecompte {
   const tva = Number(marche.taux_tva) / 100;
+  const somme = (f: (d: Decompte) => number) => decomptes.reduce((s, d) => s + (Number(f(d)) || 0), 0);
   const cumulExecuteHT = physique.montantExecuteHT;
   const cumulExecuteTTC = cumulExecuteHT * (1 + tva);
-  const decomptesPrecedentsTTC = decomptes.reduce((s, d) => s + (Number(d.montant_travaux) || 0), 0);
+  const decomptesPrecedentsTTC = somme((d) => d.montant_travaux);
   const travauxPeriodeTTC = cumulExecuteTTC - decomptesPrecedentsTTC;
   const travauxPeriodeHT = travauxPeriodeTTC / (1 + tva);
   const k = coefficientK(marche.indices_revision ?? []);
   const revisionPeriodeHT = travauxPeriodeHT * (k.k - 1);
   const revisionPeriodeTTC = revisionPeriodeHT * (1 + tva);
 
-  const cumulPrecedent = decomptes.reduce(
-    (s, d) => s + (Number(d.montant_travaux) || 0) + (Number(d.montant_revision) || 0),
-    0,
-  );
+  const cumulPrecedent = decomptesPrecedentsTTC + somme((d) => d.montant_revision);
   const retenuePrecedente = retenueGarantie(cumulPrecedent, marche);
   const retenueCumulee = retenueGarantie(cumulPrecedent + travauxPeriodeTTC + revisionPeriodeTTC, marche);
   const retenuePeriode = retenueCumulee - retenuePrecedente;
+
+  const penalitesPrecedentes = somme((d) => d.montant_penalites);
+  const penalitesCumulees = appliquerPenalites && penalites ? penalites.montant : penalitesPrecedentes;
+  const penalitesPeriode = penalitesCumulees - penalitesPrecedentes;
+
+  const remboursementPrecedent = somme((d) => d.remboursement_avance);
+  const remboursementCumule = Math.max(remboursementPrecedent, remboursementAvanceCumule(marche, cumulExecuteTTC));
+  const remboursementPeriode = remboursementCumule - remboursementPrecedent;
 
   return {
     cumulExecuteHT: arrondi2(cumulExecuteHT),
@@ -483,8 +593,31 @@ export function projetDecompte(
     retenuePrecedente,
     retenueCumulee,
     retenuePeriode: arrondi2(retenuePeriode),
-    netAPayer: arrondi2(travauxPeriodeTTC + revisionPeriodeTTC - retenuePeriode),
+    penalitesCumulees: arrondi2(penalitesCumulees),
+    penalitesPrecedentes: arrondi2(penalitesPrecedentes),
+    penalitesPeriode: arrondi2(penalitesPeriode),
+    remboursementCumule: arrondi2(remboursementCumule),
+    remboursementPrecedent: arrondi2(remboursementPrecedent),
+    remboursementPeriode: arrondi2(remboursementPeriode),
+    netAPayer: arrondi2(
+      travauxPeriodeTTC + revisionPeriodeTTC - retenuePeriode - penalitesPeriode - remboursementPeriode,
+    ),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Garanties et assurances
+// ---------------------------------------------------------------------------
+
+/** "expiree" si en vigueur et échue, "proche" si elle expire dans les 30 jours. */
+export function etatExpiration(g: Garantie, aujourdhui: Date): "expiree" | "proche" | null {
+  if (g.statut !== "En vigueur") return null;
+  const e = versDate(g.date_expiration);
+  if (!e) return null;
+  const j = ecartJours(aujourdhui, e);
+  if (j < 0) return "expiree";
+  if (j <= 30) return "proche";
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -509,8 +642,10 @@ export function pointsDeVigilance(
   attachements: Attachement[],
   aujourdhui: Date,
   statut: Marche["statut"],
+  extra: { garanties?: Garantie[]; penalites?: Penalites; marche?: Marche } = {},
 ): PointVigilance[] {
   const points: PointVigilance[] = [];
+  const { garanties = [], penalites, marche } = extra;
   if (statut === "Non démarré" && delais.sourceDemarrage === "os") {
     points.push({ niveau: "attention", message: "OS de démarrage enregistré : le statut du marché est encore « Non démarré »", onglet: "apercu" });
   }
@@ -535,6 +670,33 @@ export function pointsDeVigilance(
   }
   const aReprendre = documents.filter((d) => d.statut === "À reprendre").length;
   if (aReprendre) points.push({ niveau: "attention", message: `${aReprendre} document(s) à reprendre`, onglet: "documents" });
+  if (penalites && penalites.joursPenalisables > 0) {
+    if (!penalites.parametre) {
+      points.push({ niveau: "attention", message: `Retard de ${penalites.joursRetard} j : taux de pénalité non renseigné`, onglet: "delais" });
+    } else {
+      points.push({
+        niveau: penalites.plafonne ? "erreur" : "attention",
+        message: penalites.plafonne
+          ? `Plafond des pénalités atteint (${formatMontant(penalites.montant)}) : vérifiez les suites prévues au CPS`
+          : `Pénalités encourues : ${formatMontant(penalites.montant)} (${penalites.joursPenalisables} j)`,
+        onglet: "delais",
+      });
+    }
+  }
+  for (const g of garanties) {
+    const e = etatExpiration(g, aujourdhui);
+    if (e === "expiree") points.push({ niveau: "erreur", message: `${g.type} expirée le ${formatDate(g.date_expiration)}`, onglet: "garanties" });
+    else if (e === "proche") points.push({ niveau: "attention", message: `${g.type} expire le ${formatDate(g.date_expiration)}`, onglet: "garanties" });
+  }
+  if (marche) {
+    const enVigueur = (type: string) => garanties.some((g) => g.type === type && g.statut === "En vigueur");
+    if (Number(marche.avance_montant) > 0 && !enVigueur("Caution de restitution d'avance")) {
+      points.push({ niveau: "attention", message: "Avance enregistrée sans caution de restitution d'avance en vigueur", onglet: "garanties" });
+    }
+    if (marche.retenue_remplacee_par_caution && !enVigueur("Caution de retenue de garantie")) {
+      points.push({ niveau: "attention", message: "Retenue remplacée par une caution, mais aucune caution de retenue en vigueur", onglet: "garanties" });
+    }
+  }
   const enAttente = attachements.filter((a) => a.statut === "En attente").length;
   if (enAttente) points.push({ niveau: "attention", message: `${enAttente} attachement(s) en attente de validation`, onglet: "attachements" });
   return points;

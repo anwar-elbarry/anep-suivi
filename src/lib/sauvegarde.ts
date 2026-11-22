@@ -1,7 +1,7 @@
 "use client";
 import { supabaseNavigateur } from "./supabase/client";
 
-const TABLES = ["marches", "intervenants", "ordres_service", "pv_reunions", "bpde_lignes", "attachements", "attachement_lignes", "documents", "decomptes"] as const;
+const TABLES = ["marches", "intervenants", "ordres_service", "pv_reunions", "bpde_lignes", "attachements", "attachement_lignes", "documents", "decomptes", "garanties"] as const;
 
 /** Exporte toutes les données de l'utilisateur au format JSON. */
 export async function exporterTout() {

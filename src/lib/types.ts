@@ -58,6 +58,15 @@ export interface Marche {
   plafond_retenue: number;
   indices_revision: IndiceRevision[];
   attachements_cumulatifs: boolean;
+  penalite_taux_millieme: number | null;
+  penalite_plafond: number | null;
+  penalite_jours_exoneres: number;
+  date_reception_provisoire: string | null;
+  avance_montant: number;
+  avance_date: string | null;
+  avance_debut_remboursement: number;
+  avance_fin_remboursement: number;
+  retenue_remplacee_par_caution: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -150,7 +159,39 @@ export interface Decompte {
   montant_travaux: number;
   montant_revision: number;
   coefficient_k: number | null;
+  montant_penalites: number;
+  remboursement_avance: number;
+  retenue_garantie: number | null;
+  net_a_payer: number | null;
   observations: string;
+}
+
+export const TYPES_GARANTIE = [
+  "Caution provisoire",
+  "Caution définitive",
+  "Caution de retenue de garantie",
+  "Caution de restitution d'avance",
+  "Assurance RC",
+  "Assurance TRC",
+  "Assurance décennale",
+  "Autre",
+] as const;
+
+export const STATUTS_GARANTIE = ["En vigueur", "Mainlevée", "Restituée"] as const;
+export type StatutGarantie = (typeof STATUTS_GARANTIE)[number];
+
+export interface Garantie {
+  id: string;
+  marche_id: string;
+  type: string;
+  organisme: string;
+  reference: string;
+  montant: number | null;
+  date_emission: string | null;
+  date_expiration: string | null;
+  statut: StatutGarantie;
+  observations: string;
+  scan_path: string | null;
 }
 
 export interface Activite {
@@ -170,6 +211,7 @@ export interface DossierMarche {
   attachements: Attachement[];
   documents: DocumentAFournir[];
   decomptes: Decompte[];
+  garanties: Garantie[];
   activites: Activite[];
 }
 

@@ -11,7 +11,7 @@ export function BoutonScan({
   chemin,
   onChange,
 }: {
-  table: "documents" | "pv_reunions";
+  table: "documents" | "pv_reunions" | "garanties";
   id: string;
   marcheId: string;
   chemin: string | null;

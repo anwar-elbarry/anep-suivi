@@ -46,6 +46,7 @@ export default function Accueil() {
         par(donnees.attachements, m.id),
         par(donnees.decomptes, m.id),
         par(donnees.documents, m.id),
+        par(donnees.garanties, m.id),
       ),
     }));
   }, [donnees]);

@@ -3,6 +3,8 @@ import { Plus, Save, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   aujourdhuiUtc,
+  calculerDelais,
+  calculerPenalites,
   etatPhysique,
   formatMontant,
   formatPct,
@@ -22,11 +24,14 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
   const [tva, setTva] = useState<number>(Number(marche.taux_tva));
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
+  const [appliquerPenalites, setAppliquerPenalites] = useState(true);
 
   const simule: Marche = { ...marche, indices_revision: indices, taux_tva: tva };
   const r = useMemo(() => rapprocher(attachements, bpde, marche.attachements_cumulatifs), [attachements, bpde, marche.attachements_cumulatifs]);
   const physique = useMemo(() => etatPhysique(bpde, r.quantites), [bpde, r]);
-  const projet = projetDecompte(simule, physique, decomptes);
+  const auj = aujourdhuiUtc();
+  const penalites = calculerPenalites(marche, calculerDelais(marche, dossier.ordres, auj), auj);
+  const projet = projetDecompte(simule, physique, decomptes, penalites, appliquerPenalites);
   const modifie = JSON.stringify(indices) !== JSON.stringify(marche.indices_revision ?? []) || tva !== Number(marche.taux_tva);
 
   const majIndice = (i: number, p: Partial<IndiceRevision>) => setIndices(indices.map((x, j) => (j === i ? { ...x, ...p } : x)));
@@ -46,7 +51,12 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
       setErreur(`Formule de révision incomplète : ${projet.k.anomalies.join(" ; ")}`);
       return;
     }
-    if (!confirm(`Enregistrer le décompte n° ${decomptes.length + 1} : travaux ${formatMontant(projet.travauxPeriodeTTC)} TTC, révision ${formatMontant(projet.revisionPeriodeTTC)} TTC ?`)) return;
+    if (
+      !confirm(
+        `Enregistrer le décompte n° ${decomptes.length + 1} : travaux ${formatMontant(projet.travauxPeriodeTTC)} TTC, révision ${formatMontant(projet.revisionPeriodeTTC)} TTC, net à payer ${formatMontant(projet.netAPayer)} ?`,
+      )
+    )
+      return;
     setEnvoi(true);
     try {
       if (modifie) await modifier("marches", marche.id, { indices_revision: indices, taux_tva: tva });
@@ -57,7 +67,13 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
         montant_travaux: projet.travauxPeriodeTTC,
         montant_revision: projet.revisionPeriodeTTC,
         coefficient_k: Number(projet.k.k.toFixed(6)),
-        observations: `Projet généré : cumul exécuté ${formatMontant(projet.cumulExecuteTTC)} TTC, retenue de la période ${formatMontant(projet.retenuePeriode)}, net à payer ${formatMontant(projet.netAPayer)}.`,
+        montant_penalites: projet.penalitesPeriode,
+        remboursement_avance: projet.remboursementPeriode,
+        retenue_garantie: projet.retenuePeriode,
+        net_a_payer: projet.netAPayer,
+        observations: `Projet généré : cumul exécuté ${formatMontant(projet.cumulExecuteTTC)} TTC.${
+          projet.penalitesPeriode ? ` Pénalités : ${penalites.joursPenalisables} j × ${formatMontant(penalites.parJour)}.` : ""
+        }`,
       });
       await recharger();
       allerA("financier");
@@ -78,7 +94,9 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
     ["Travaux de la période TTC", projet.travauxPeriodeTTC, "font-semibold"],
     [`Révision de la période HT (K − 1 = ${(projet.k.k - 1).toFixed(4).replace(".", ",")})`, projet.revisionPeriodeHT],
     ["Révision de la période TTC", projet.revisionPeriodeTTC],
-    ["Retenue de garantie de la période", -projet.retenuePeriode],
+    [marche.retenue_remplacee_par_caution ? "Retenue de garantie (remplacée par caution)" : "Retenue de garantie de la période", -projet.retenuePeriode],
+    [`Pénalités de retard de la période${appliquerPenalites ? "" : " (non appliquées)"}`, -projet.penalitesPeriode],
+    ["Remboursement de l'avance", -projet.remboursementPeriode],
     ["Net à payer TTC", projet.netAPayer, "font-bold text-marque-700 text-base"],
   ];
 
@@ -138,7 +156,7 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
           )}
           <p className="mt-3 text-sm">
             K = {projet.k.partieFixe.toFixed(4).replace(".", ",")} (partie fixe)
-            {indices.map((x) => ` + ${x.part} × ${x.actuel || "?"} / ${x.base || "?"}`).join("")} ={" "}
+            {indices.map((x) => ` + ${String(x.part).replace(".", ",")} × ${x.actuel || "?"} / ${x.base || "?"}`).join("")} ={" "}
             <strong>{projet.k.k.toFixed(4).replace(".", ",")}</strong>
           </p>
           {projet.k.anomalies.map((a) => (
@@ -165,9 +183,14 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
               ))}
             </tbody>
           </table>
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={appliquerPenalites} onChange={(e) => setAppliquerPenalites(e.target.checked)} />
+            Imputer les pénalités de retard ({penalites.parametre ? `${penalites.joursPenalisables} j, cumul ${formatMontant(penalites.montant)}` : "taux non renseigné"})
+          </label>
           <p className="mt-2 text-xs text-slate-500">
-            Retenue cumulée {formatMontant(projet.retenueCumulee)} (plafond {Number(marche.plafond_retenue)} % du marché). Pénalités de retard, avances et
-            autres déductions non calculées. Document de travail : ne vaut pas décompte officiel.
+            Retenue cumulée {formatMontant(projet.retenueCumulee)} (plafond {Number(marche.plafond_retenue)} % du marché). Pénalités cumulées{" "}
+            {formatMontant(projet.penalitesCumulees)}, avance remboursée {formatMontant(projet.remboursementCumule)}. Autres déductions (frais,
+            sanctions diverses) non calculées. Document de travail : ne vaut pas décompte officiel.
           </p>
           {r.nonRapprochees.length > 0 && (
             <p className="mt-2 text-sm text-amber-700">{r.nonRapprochees.length} ligne(s) d&apos;attachement non rapprochée(s) ne sont pas valorisées.</p>

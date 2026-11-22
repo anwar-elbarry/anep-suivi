@@ -10,7 +10,7 @@ attachements, documents à fournir, BPDE, état physique, décomptes, révision 
 ## Mise en route
 
 1. Créez un projet sur [supabase.com](https://supabase.com).
-2. Appliquez le schéma : collez `supabase/migrations/20261122000000_schema_initial.sql` dans l'éditeur SQL du projet,
+2. Appliquez le schéma : exécutez **dans l'ordre** les fichiers de `supabase/migrations/` dans l'éditeur SQL du projet,
    ou avec la CLI : `supabase link --project-ref <ref>` puis `supabase db push`.
    Le script crée les tables, la sécurité par ligne (chaque utilisateur ne voit que ses données), le journal d'activité
    et le bucket privé `scans` (20 Mo par fichier).
@@ -47,8 +47,10 @@ Tests des calculs : `npm test`.
 | Avancement physique | Par ligne BPDE : quantité exécutée / quantité marché, plafonnée à 100 %, pondérée par la valeur de la ligne. Attachements additionnés, ou dernier attachement si « cumulatifs » ; attachements rejetés exclus |
 | Rapprochement | Ligne d'attachement → BPDE par n° de prix, puis par désignation normalisée (sans accents, casse ni ponctuation) |
 | Avancement financier | Σ décomptes (travaux + révision) / montant TTC du marché |
-| Retenue de garantie | taux × cumul payé, plafonnée à un % du montant du marché (10 % et 7 % par défaut, modifiables) |
-| Projet de décompte | Quantités exécutées × prix BPDE (HT) + TVA − décomptes précédents = travaux de la période ; révision = travaux HT × (K − 1) ; net = travaux + révision − retenue de la période |
+| Retenue de garantie | taux × cumul payé, plafonnée à un % du montant du marché (10 % et 7 % par défaut, modifiables) ; nulle si « remplacée par une caution » |
+| Pénalités de retard | taux (‰ du montant TTC par jour) × jours de retard non exonérés, limitées au plafond (% du montant). Retard arrêté à la réception provisoire, à défaut à aujourd'hui. Aucun taux par défaut |
+| Remboursement de l'avance | avance × part de l'avancement (cumul travaux TTC / montant) comprise entre le seuil de début et le seuil de fin, linéaire. 0 % et 100 % = au prorata |
+| Projet de décompte | Quantités exécutées × prix BPDE (HT) + TVA − décomptes précédents = travaux de la période ; révision = travaux HT × (K − 1) ; net = travaux + révision − retenue − pénalités − remboursement d'avance de la période |
 | Coefficient K | K = partie fixe + Σ (part × indice actuel / indice de base), 3 indices maximum ; partie fixe = 1 − Σ parts |
 
 ## Hypothèses et limites
@@ -58,7 +60,8 @@ L'application ne connaît ni votre CPS, ni la version du CCAG-T applicable, ni v
 - prix unitaires du BPDE lus **hors taxes**, TVA 20 % par défaut (modifiable) ;
 - retenue de garantie 10 % plafonnée à 7 % : valeurs de départ à vérifier ;
 - formule de révision et indices à recopier depuis le CPS ;
-- pénalités de retard, avances et autres déductions **non calculées** ;
+- taux et plafond des pénalités, seuils de remboursement de l'avance : **à saisir d'après le CPS** (aucune valeur par défaut) ;
+- autres déductions (frais, sanctions diverses) **non calculées** ;
 - les résultats sont une aide à la préparation et au contrôle, **pas un décompte officiel**.
 
 ### Fonctions Claude
@@ -70,6 +73,22 @@ L'application ne connaît ni votre CPS, ni la version du CCAG-T applicable, ni v
   Le CPS est supprimé du stockage après analyse.
 
 Rien n'est ajouté sans validation : la liste proposée est relue et cochée avant import. Ce sont des suggestions, à contrôler.
+
+## Exports
+
+Menu **Exporter** de la fiche marché :
+
+- **Classeur Excel** : synthèse, projet de décompte, écarts, BPDE, décomptes, documents, garanties, ordres de service ;
+- **Impression / PDF** (via la fenêtre d'impression du navigateur) : projet de décompte avec cadres de signature, tableau des écarts,
+  fiche de synthèse, liste des documents à fournir. Chaque décompte enregistré s'imprime depuis l'onglet Financier.
+
+Chaque document imprimé porte la mention « document de travail, ne vaut pas décompte officiel ».
+
+## Garanties et assurances
+
+Onglet **Garanties** : cautions (provisoire, définitive, retenue de garantie, restitution d'avance) et assurances (RC, TRC, décennale)
+avec organisme, référence, montant, dates et scan. Alerte 30 jours avant expiration, et alerte si une avance ou une retenue remplacée
+n'est pas couverte par la caution correspondante.
 
 ## Données
 

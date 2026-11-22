@@ -54,3 +54,19 @@
     @apply text-right tabular-nums;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  tr {
+    break-inside: avoid;
+  }
+}

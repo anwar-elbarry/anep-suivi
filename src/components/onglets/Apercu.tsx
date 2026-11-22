@@ -16,7 +16,7 @@ const COULEUR_OS: Record<string, string> = {
 
 export function OngletApercu({ dossier, allerA }: PropsOnglet) {
   const { marche } = dossier;
-  const s = syntheseMarche(marche, dossier.ordres, dossier.bpde, dossier.attachements, dossier.decomptes, dossier.documents);
+  const s = syntheseMarche(marche, dossier.ordres, dossier.bpde, dossier.attachements, dossier.decomptes, dossier.documents, dossier.garanties);
   const { delais: d, finances: f, physique: p } = s;
   const j = d.joursRestants;
   const docsValides = dossier.documents.filter((x) => x.statut === "Validé").length;
@@ -33,7 +33,11 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
         />
         <Chiffre label="Avancement physique" valeur={formatPct(p.avancement)} />
         <Chiffre label="Montant atteint" valeur={formatMontant(f.montantAtteint)} sous={formatPct(f.part) + " du marché"} />
-        <Chiffre label="Documents validés" valeur={`${docsValides} / ${dossier.documents.length}`} />
+        {s.penalites.montant > 0 ? (
+          <Chiffre label="Pénalités encourues" valeur={formatMontant(s.penalites.montant)} sous={`${s.penalites.joursPenalisables} j de retard`} alerte />
+        ) : (
+          <Chiffre label="Documents validés" valeur={`${docsValides} / ${dossier.documents.length}`} />
+        )}
       </div>
 
       <div className="carte grid gap-4 p-4 md:grid-cols-3">
@@ -56,7 +60,9 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
                   ["Révision des prix", f.cumulRevision],
                   ["Montant atteint", f.montantAtteint],
                   ["Retenue de garantie", f.retenue],
-                  ["Net après retenue", f.netApresRetenue],
+                  ["Pénalités imputées", f.cumulPenalites],
+                  ["Avance restant à rembourser", f.avanceRestante],
+                  ["Net après déductions", f.netApresDeductions],
                   ["Reste à réaliser", f.reste],
                 ] as const
               ).map(([l, v]) => (
