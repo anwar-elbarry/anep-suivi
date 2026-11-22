@@ -20,25 +20,37 @@ export function Modal({
     if (!ouvert) return;
     const f = (e: KeyboardEvent) => e.key === "Escape" && onFermer();
     window.addEventListener("keydown", f);
-    return () => window.removeEventListener("keydown", f);
+    const precedent = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", f);
+      document.body.style.overflow = precedent;
+    };
   }, [ouvert, onFermer]);
   if (!ouvert) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 pt-[6vh]" onMouseDown={onFermer}>
+    // Mobile : feuille qui monte du bas ; écran large : fenêtre centrée.
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-encre/30 backdrop-blur-sm sm:items-start sm:overflow-y-auto sm:p-4 sm:pt-[6vh]"
+      onMouseDown={onFermer}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={titre}
-        className={`carte w-full ${large ? "max-w-5xl" : "max-w-xl"} p-0`}
+        className={`flex max-h-[92dvh] w-full flex-col rounded-t-[1.75rem] border border-white/70 bg-white shadow-2xl sm:max-h-none sm:rounded-[1.75rem] ${
+          large ? "sm:max-w-5xl" : "sm:max-w-xl"
+        }`}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h2 className="text-base font-semibold">{titre}</h2>
-          <button className="btn-icone" onClick={onFermer} aria-label="Fermer">
+        <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-200 sm:hidden" aria-hidden />
+        <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-3 sm:px-6 sm:pt-5">
+          <h2 className="text-lg font-semibold">{titre}</h2>
+          <button className="btn-rond" onClick={onFermer} aria-label="Fermer">
             <X size={18} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">{children}</div>
       </div>
     </div>
   );
@@ -53,65 +65,125 @@ export function Champ({ label, children, className = "" }: { label: string; chil
   );
 }
 
-export function Barre({ label, valeur, couleur = "bg-marque-600", detail }: { label: string; valeur: number; couleur?: string; detail?: string }) {
+/** Jauge linéaire : valeur entre 0 et 1, libellé et pourcentage toujours affichés (jamais la couleur seule). */
+export function Barre({ label, valeur, couleur = "bg-bleu-fonce", detail }: { label: string; valeur: number; couleur?: string; detail?: string }) {
   const pct = Math.max(0, Math.min(1, valeur || 0)) * 100;
   return (
     <div>
-      <div className="mb-1 flex justify-between text-xs text-slate-600">
-        <span>{label}</span>
-        <span className="font-medium tabular-nums text-slate-800">{detail ?? `${pct.toFixed(1).replace(".", ",")} %`}</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
+      {(label || detail) && (
+        <div className="mb-1.5 flex justify-between gap-2 text-xs text-slate-500">
+          <span>{label}</span>
+          <span className="font-medium tabular-nums text-encre">{detail ?? `${pct.toFixed(1).replace(".", ",")} %`}</span>
+        </div>
+      )}
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-slate-200/70"
+        role="progressbar"
+        aria-valuenow={Math.round(pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label || detail}
+      >
         <div className={`h-full rounded-full ${couleur}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
 }
 
+/** Jauge circulaire (une seule valeur) : le titre et le pourcentage sont écrits en clair au centre et dessous. */
+export function Anneau({
+  label,
+  valeur,
+  couleur = "#5b7fc7",
+  sous,
+  taille = 112,
+  horizontal = false,
+}: {
+  label: string;
+  valeur: number;
+  couleur?: string;
+  sous?: ReactNode;
+  taille?: number;
+  /** Jauge à gauche, libellé à droite (cartes de synthèse). */
+  horizontal?: boolean;
+}) {
+  const v = Math.max(0, Math.min(1, valeur || 0));
+  const epaisseur = 10;
+  const r = (taille - epaisseur) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <figure className={horizontal ? "flex items-center gap-4 text-left" : "flex flex-col items-center gap-2 text-center"}>
+      <div className="relative" style={{ width: taille, height: taille }}>
+        <svg width={taille} height={taille} viewBox={`0 0 ${taille} ${taille}`} role="img" aria-label={`${label} : ${Math.round(v * 100)} %`}>
+          <circle cx={taille / 2} cy={taille / 2} r={r} fill="none" stroke="#e4e7ec" strokeWidth={epaisseur} />
+          <circle
+            cx={taille / 2}
+            cy={taille / 2}
+            r={r}
+            fill="none"
+            stroke={couleur}
+            strokeWidth={epaisseur}
+            strokeLinecap="round"
+            strokeDasharray={`${c * v} ${c}`}
+            transform={`rotate(-90 ${taille / 2} ${taille / 2})`}
+          />
+        </svg>
+        <span className={`absolute inset-0 flex items-center justify-center font-semibold tabular-nums ${taille < 90 ? "text-base" : "text-xl"}`}>
+          {(v * 100).toFixed(0)}
+          <span className="ml-0.5 text-sm font-medium text-slate-500">%</span>
+        </span>
+      </div>
+      <figcaption>
+        <span className="block text-sm font-medium">{label}</span>
+        {sous && <span className="block text-xs text-slate-500">{sous}</span>}
+      </figcaption>
+    </figure>
+  );
+}
+
 const COULEURS_STATUT: Record<StatutMarche, string> = {
-  "Non démarré": "bg-slate-100 text-slate-700",
-  "En cours": "bg-blue-100 text-blue-800",
-  Arrêté: "bg-amber-100 text-amber-800",
-  "Réception provisoire": "bg-emerald-100 text-emerald-800",
-  "Réception définitive": "bg-emerald-200 text-emerald-900",
-  Résilié: "bg-red-100 text-red-800",
+  "Non démarré": "bg-slate-200/80 text-slate-700",
+  "En cours": "bg-bleu text-white",
+  Arrêté: "bg-rouge text-white",
+  "Réception provisoire": "bg-encre text-white",
+  "Réception définitive": "bg-encre/80 text-white",
+  Résilié: "bg-rouge-pale text-rouge-fonce",
 };
 
 export function BadgeStatut({ statut }: { statut: StatutMarche }) {
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${COULEURS_STATUT[statut] ?? ""}`}>{statut}</span>;
+  return <span className={`pastille ${COULEURS_STATUT[statut] ?? ""}`}>{statut}</span>;
 }
 
 export const COULEURS_DOC: Record<StatutDocument, string> = {
-  "À fournir": "bg-slate-100 text-slate-700",
-  Fourni: "bg-blue-100 text-blue-800",
-  Validé: "bg-emerald-100 text-emerald-800",
-  "À reprendre": "bg-amber-100 text-amber-800",
+  "À fournir": "bg-slate-200/80 text-slate-700",
+  Fourni: "bg-bleu-pale text-bleu-texte",
+  Validé: "bg-bleu text-white",
+  "À reprendre": "bg-rouge text-white",
 };
 
 export function BadgeDoc({ statut }: { statut: StatutDocument }) {
-  return <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${COULEURS_DOC[statut]}`}>{statut}</span>;
+  return <span className={`pastille ${COULEURS_DOC[statut]}`}>{statut}</span>;
 }
 
 export function Vide({ children }: { children: ReactNode }) {
-  return <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">{children}</div>;
+  return <div className="rounded-3xl border border-dashed border-slate-300 bg-white/40 p-8 text-center text-sm text-slate-500">{children}</div>;
 }
 
 export function Erreur({ message }: { message: string | null }) {
   if (!message) return null;
-  return <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</div>;
+  return <div className="mb-3 rounded-2xl border border-rouge/30 bg-rouge-pale px-4 py-2.5 text-sm text-rouge-fonce">{message}</div>;
 }
 
 export function Chiffre({ label, valeur, sous, alerte }: { label: string; valeur: ReactNode; sous?: ReactNode; alerte?: boolean }) {
   return (
-    <div className="carte p-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`mt-1 text-xl font-semibold tabular-nums ${alerte ? "text-red-600" : "text-slate-900"}`}>{valeur}</div>
+    <div className="carte min-w-0 px-4 py-4 sm:px-5">
+      <div className="truncate text-xs font-medium text-slate-500">{label}</div>
+      <div className={`mt-1 truncate text-lg font-semibold tabular-nums sm:text-2xl ${alerte ? "text-rouge-fonce" : "text-encre"}`}>{valeur}</div>
       {sous && <div className="mt-0.5 text-xs text-slate-500">{sous}</div>}
     </div>
   );
 }
 
-/** Champ numérique tolérant la virgule décimale. */
 export function ChampNombre({
   valeur,
   onChange,

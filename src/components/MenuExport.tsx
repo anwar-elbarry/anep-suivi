@@ -29,7 +29,7 @@ export function MenuExport({ dossier }: { dossier: DossierMarche }) {
         <FileDown size={14} /> Exporter <ChevronDown size={13} />
       </button>
       {ouvert && (
-        <div role="menu" className="carte absolute right-0 z-30 mt-1 w-60 py-1 text-sm">
+        <div role="menu" className="carte absolute right-0 z-50 mt-2 w-64 rounded-3xl bg-white py-1.5 text-sm">
           <button
             role="menuitem"
             className="block w-full px-3 py-2 text-left hover:bg-slate-50"

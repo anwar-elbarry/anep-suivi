@@ -50,8 +50,8 @@ export function OngletPhysique({ dossier, recharger, allerA }: PropsOnglet) {
       </div>
 
       {r.nonRapprochees.length > 0 && (
-        <div className="carte border-amber-200 p-4">
-          <h3 className="mb-2 text-sm font-semibold text-amber-800">Lignes d&apos;attachement non rapprochées du BPDE (non valorisées)</h3>
+        <div className="carte border-bleu/30 p-4">
+          <h3 className="mb-2 text-sm font-semibold text-bleu-texte">Lignes d&apos;attachement non rapprochées du BPDE (non valorisées)</h3>
           <ul className="space-y-0.5 text-sm text-slate-700">
             {r.nonRapprochees.map((l, i) => (
               <li key={i}>
@@ -78,14 +78,14 @@ export function OngletPhysique({ dossier, recharger, allerA }: PropsOnglet) {
           </thead>
           <tbody>
             {p.lignes.map((l) => (
-              <tr key={l.ligne.id} className={l.depassement ? "bg-red-50/60" : ""}>
+              <tr key={l.ligne.id} className={l.depassement ? "bg-rouge-pale/60" : ""}>
                 <td>{l.ligne.numero}</td>
                 <td>{l.ligne.designation}</td>
                 <td>{l.ligne.unite}</td>
                 <td className="num">{formatQte(l.qteMarche)}</td>
-                <td className={`num ${l.depassement ? "font-semibold text-red-600" : ""}`}>{formatQte(l.qteExecutee)}</td>
+                <td className={`num ${l.depassement ? "font-semibold text-rouge-fonce" : ""}`}>{formatQte(l.qteExecutee)}</td>
                 <td>
-                  <Barre label="" valeur={l.taux} couleur={l.depassement ? "bg-red-500" : "bg-marque-600"} />
+                  <Barre label="" valeur={l.taux} couleur={l.depassement ? "bg-rouge" : "bg-bleu-fonce"} detail={`${(l.taux * 100).toFixed(0)} %${l.depassement ? " · dépassement" : ""}`} />
                 </td>
               </tr>
             ))}

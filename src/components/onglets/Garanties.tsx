@@ -21,9 +21,9 @@ const CHAMPS: DefChamp[] = [
 ];
 
 const COULEURS_STATUT: Record<string, string> = {
-  "En vigueur": "bg-blue-100 text-blue-800",
-  Mainlevée: "bg-slate-100 text-slate-700",
-  Restituée: "bg-slate-100 text-slate-700",
+  "En vigueur": "bg-bleu-pale text-bleu-texte",
+  Mainlevée: "bg-slate-200/80 text-slate-700",
+  Restituée: "bg-slate-200/80 text-slate-700",
 };
 
 export function OngletGaranties({ dossier, recharger }: PropsOnglet) {
@@ -69,7 +69,7 @@ export function OngletGaranties({ dossier, recharger }: PropsOnglet) {
               {liste.map((g) => {
                 const e = etatExpiration(g, auj);
                 return (
-                  <tr key={g.id} className={e === "expiree" ? "bg-red-50/60" : e === "proche" ? "bg-amber-50/60" : ""}>
+                  <tr key={g.id} className={e === "expiree" ? "bg-rouge-pale/60" : e === "proche" ? "bg-bleu-pale/60" : ""}>
                     <td>
                       <div className="font-medium">{g.type}</div>
                       {g.observations && <div className="text-xs text-slate-500">{g.observations}</div>}
@@ -78,7 +78,7 @@ export function OngletGaranties({ dossier, recharger }: PropsOnglet) {
                     <td>{g.reference || "—"}</td>
                     <td className="num">{formatMontant(g.montant)}</td>
                     <td>{formatDate(g.date_emission)}</td>
-                    <td className={e === "expiree" ? "font-semibold text-red-600" : e === "proche" ? "font-semibold text-amber-700" : ""}>
+                    <td className={e === "expiree" ? "font-semibold text-rouge-fonce" : e === "proche" ? "font-semibold text-bleu-texte" : ""}>
                       {formatDate(g.date_expiration)}
                       {e === "expiree" && <div className="text-xs">expirée</div>}
                       {e === "proche" && <div className="text-xs">expire bientôt</div>}
@@ -92,7 +92,7 @@ export function OngletGaranties({ dossier, recharger }: PropsOnglet) {
                         <Pencil size={15} />
                       </button>
                       <button
-                        className="btn-icone hover:text-red-600"
+                        className="btn-icone hover:text-rouge-fonce"
                         aria-label="Supprimer"
                         onClick={async () => {
                           if (confirm(`Supprimer « ${g.type} » ?`)) {

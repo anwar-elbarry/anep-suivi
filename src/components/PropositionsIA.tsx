@@ -90,7 +90,7 @@ export function PropositionsIA({
                 </td>
                 <td className="font-medium">
                   {p.nom}
-                  {dejaLa.has(normaliserPourDoublon(p.nom)) && <span className="ml-2 text-xs text-amber-700">(déjà dans la liste)</span>}
+                  {dejaLa.has(normaliserPourDoublon(p.nom)) && <span className="ml-2 text-xs text-bleu-texte">(déjà dans la liste)</span>}
                 </td>
                 <td>{p.prestation}</td>
                 <td className="whitespace-nowrap">{p.article_cps ?? "—"}</td>

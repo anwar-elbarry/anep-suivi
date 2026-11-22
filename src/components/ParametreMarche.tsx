@@ -48,7 +48,7 @@ export function ParametreNombre({
         }}
       />
       {aide && !erreur && <span className="mt-0.5 block text-xs text-slate-500">{aide}</span>}
-      {erreur && <span className="mt-0.5 block text-xs text-red-600">{erreur}</span>}
+      {erreur && <span className="mt-0.5 block text-xs text-rouge-fonce">{erreur}</span>}
     </label>
   );
 }

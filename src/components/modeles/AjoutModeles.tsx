@@ -89,8 +89,8 @@ export function AjoutModeles({ fichiers, onFermer, onAjoute }: { fichiers: File[
           {lecture.analyse.erreurs.length > 0 ? (
             <p className="mb-3 text-sm text-slate-600">Corrigez le modèle dans Word ou Excel, puis déposez-le à nouveau.</p>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <Champ label="Nom du modèle" className="col-span-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Champ label="Nom du modèle" className="sm:col-span-2">
                 <input className="champ" value={nom} onChange={(e) => setNom(e.target.value)} />
               </Champ>
               <Champ label="Catégorie">
@@ -100,7 +100,7 @@ export function AjoutModeles({ fichiers, onFermer, onAjoute }: { fichiers: File[
                   ))}
                 </select>
               </Champ>
-              <Champ label="Description (facultatif)" className="col-span-2">
+              <Champ label="Description (facultatif)" className="sm:col-span-2">
                 <textarea className="champ" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
               </Champ>
             </div>

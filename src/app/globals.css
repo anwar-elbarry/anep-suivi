@@ -1,57 +1,114 @@
 @import "tailwindcss";
 
+/*
+ * Charte inspirée des références : encre #10141A, gris #E4E4E4, bleu #83A2DB, rouge #CE6969, blanc.
+ * Les tons « -fonce » sont les variantes à contraste suffisant (≥ 3:1) pour les marques graphiques et le texte.
+ */
 @theme {
-  --color-marque-50: #eff6ff;
-  --color-marque-100: #dbeafe;
-  --color-marque-500: #3b82f6;
-  --color-marque-600: #2563eb;
-  --color-marque-700: #1d4ed8;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-encre: #10141a;
+  --color-encre-doux: #262b33;
+  --color-gris: #e4e4e4;
+  --color-bleu: #83a2db;
+  --color-bleu-fonce: #5b7fc7;
+  --color-bleu-texte: #3f63ad;
+  --color-bleu-pale: #e8eefa;
+  --color-rouge: #ce6969;
+  --color-rouge-fonce: #b44b4b;
+  --color-rouge-pale: #f8e6e6;
+
+  /* Alias historiques utilisés dans les composants */
+  --color-marque-50: #eef2fa;
+  --color-marque-100: #dce5f5;
+  --color-marque-500: #83a2db;
+  --color-marque-600: #10141a;
+  --color-marque-700: #3f63ad;
+
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --radius-carte: 1.75rem;
 }
 
 @layer base {
-  body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+  html {
+    -webkit-tap-highlight-color: transparent;
+    /* En-tête et onglets collants : un élément atteint au clavier ou par lien reste visible */
+    scroll-padding-top: 150px;
+    scroll-padding-bottom: 96px;
   }
-  h1, h2, h3 {
-    @apply text-slate-900;
+  body {
+    @apply min-h-screen text-encre antialiased;
+    background-color: #e6e9ef;
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, #f4f6fa 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, #dfe6f3 0%, transparent 55%),
+      linear-gradient(180deg, #eceef2 0%, #dfe3ea 100%);
+    background-attachment: fixed;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight text-encre;
+  }
+  ::selection {
+    background: #dce5f5;
   }
 }
 
 @utility btn {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full border border-white/80 bg-white/80 px-4 py-2 text-sm font-medium text-encre shadow-[0_1px_2px_rgba(16,20,26,0.06)] backdrop-blur transition hover:bg-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-primaire {
-  @apply btn border-marque-600 bg-marque-600 text-white hover:bg-marque-700;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full border border-encre bg-encre px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_rgba(16,20,26,0.18)] transition hover:bg-encre-doux active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-danger {
-  @apply btn border-red-200 text-red-700 hover:bg-red-50;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-full border border-rouge/30 bg-white/80 px-4 py-2 text-sm font-medium text-rouge-fonce transition hover:bg-rouge-pale active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-icone {
-  @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800;
+  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-transparent text-slate-500 transition hover:border-white hover:bg-white hover:text-encre hover:shadow-sm disabled:opacity-40;
+}
+@utility btn-rond {
+  @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white/80 text-encre shadow-[0_1px_3px_rgba(16,20,26,0.08)] backdrop-blur transition hover:bg-white active:scale-95 disabled:opacity-50;
 }
 
 @layer components {
   .carte {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply min-w-0 rounded-[var(--radius-carte)] border border-white/70 bg-white/75 shadow-[0_10px_30px_-12px_rgba(16,20,26,0.12)] backdrop-blur-xl;
   }
   .champ {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-marque-500 focus:ring-2 focus:ring-marque-100;
+    @apply w-full rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-sm text-encre outline-none transition placeholder:text-slate-400 focus:border-bleu focus:ring-4 focus:ring-bleu/20;
   }
   .etiquette {
-    @apply mb-1 block text-xs font-medium text-slate-600;
+    @apply mb-1 block text-xs font-medium text-slate-500;
   }
   .tableau {
     @apply w-full text-sm;
   }
   .tableau th {
-    @apply border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply border-b border-slate-200/70 px-3 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider whitespace-nowrap text-slate-500;
   }
   .tableau td {
-    @apply border-b border-slate-100 px-3 py-2 align-top;
+    @apply border-b border-slate-100 px-3 py-2.5 align-top;
+  }
+  .tableau tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  /* Sur mobile, les tableaux gardent une largeur lisible et défilent dans leur carte */
+  @media (max-width: 640px) {
+    :where(.overflow-x-auto, .overflow-y-auto, .overflow-auto) .tableau {
+      min-width: 560px;
+    }
   }
   .num {
     @apply text-right tabular-nums;
+  }
+  .pastille {
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  /* Défilement horizontal discret pour les barres d'onglets */
+  .defilement {
+    scrollbar-width: none;
+  }
+  .defilement::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -64,7 +121,7 @@
     display: none !important;
   }
   body {
-    background: white;
+    background: white !important;
   }
   tr {
     break-inside: avoid;

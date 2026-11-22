@@ -119,6 +119,7 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
           {indices.length === 0 ? (
             <p className="text-sm text-slate-500">Aucun indice : pas de révision (K = 1).</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="tableau">
               <thead>
                 <tr>
@@ -153,6 +154,7 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
           <p className="mt-3 text-sm">
             K = {projet.k.partieFixe.toFixed(4).replace(".", ",")} (partie fixe)
@@ -160,7 +162,7 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
             <strong>{projet.k.k.toFixed(4).replace(".", ",")}</strong>
           </p>
           {projet.k.anomalies.map((a) => (
-            <p key={a} className="text-sm text-red-600">
+            <p key={a} className="text-sm text-rouge-fonce">
               • {a}
             </p>
           ))}
@@ -193,7 +195,7 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
             sanctions diverses) non calculées. Document de travail : ne vaut pas décompte officiel.
           </p>
           {r.nonRapprochees.length > 0 && (
-            <p className="mt-2 text-sm text-amber-700">{r.nonRapprochees.length} ligne(s) d&apos;attachement non rapprochée(s) ne sont pas valorisées.</p>
+            <p className="mt-2 text-sm text-bleu-texte">{r.nonRapprochees.length} ligne(s) d&apos;attachement non rapprochée(s) ne sont pas valorisées.</p>
           )}
           <button className="btn-primaire mt-4" onClick={enregistrerDecompte} disabled={envoi}>
             <Save size={15} /> {envoi ? "Enregistrement…" : "Enregistrer comme décompte"}
@@ -219,7 +221,7 @@ export function OngletDecompte({ dossier, recharger, allerA }: PropsOnglet) {
           </thead>
           <tbody>
             {physique.lignes.map((l) => (
-              <tr key={l.ligne.id} className={l.depassement ? "text-red-700" : ""}>
+              <tr key={l.ligne.id} className={l.depassement ? "text-rouge-fonce" : ""}>
                 <td>{l.ligne.numero}</td>
                 <td>{l.ligne.designation}</td>
                 <td className="num">{formatQte(l.qteMarche)}</td>

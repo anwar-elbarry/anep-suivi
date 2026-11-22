@@ -19,7 +19,7 @@ function Copier({ texte }: { texte: string }) {
         }
       }}
     >
-      {texte} {fait ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} className="text-slate-400" />}
+      {texte} {fait ? <Check size={11} className="text-bleu-texte" /> : <Copy size={11} className="text-slate-400" />}
     </button>
   );
 }

@@ -161,7 +161,7 @@ export function ParametresCpsBouton({ marche, recharger }: { marche: Marche; rec
   return (
     <>
       <button className="btn" onClick={() => entree.current?.click()} disabled={!!etat} title="Claude lit le CPS et propose délai, retenue, pénalités, avance, révision">
-        <Sparkles size={14} className={etat ? "animate-pulse" : ""} /> {etat ? "Lecture du CPS…" : "Paramètres du CPS"}
+        <Sparkles size={14} className={etat ? "animate-pulse" : ""} /> <span>{etat ? "Lecture…" : <><span className="hidden sm:inline">Paramètres du </span>CPS</>}</span>
       </button>
       <input
         ref={entree}
@@ -221,7 +221,7 @@ export function ParametresCpsBouton({ marche, recharger }: { marche: Marche; rec
             </>
           )}
           {resultat.remarques.length > 0 && (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <div className="mt-3 rounded-lg border border-bleu/30 bg-bleu-pale px-3 py-2 text-sm text-bleu-texte">
               <p className="font-medium">Points d&apos;attention signalés</p>
               <ul className="mt-1 list-disc pl-5">
                 {resultat.remarques.map((r, i) => (
@@ -242,7 +242,7 @@ export function ParametresCpsBouton({ marche, recharger }: { marche: Marche; rec
           </div>
         </Modal>
       )}
-      {!resultat && erreur && <span className="text-xs text-red-600">{erreur}</span>}
+      {!resultat && erreur && <span className="text-xs text-rouge-fonce">{erreur}</span>}
     </>
   );
 }

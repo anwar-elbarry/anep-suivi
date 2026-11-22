@@ -55,7 +55,7 @@ export function OngletAvenants({ dossier, recharger, allerA }: PropsOnglet) {
             aide="limite fixée par le CPS / CCAG ; vide = pas d'alerte"
           />
         </div>
-        {depasse && <p className="text-sm font-medium text-red-600">Seuil dépassé : vérifiez la procédure applicable avant de poursuivre.</p>}
+        {depasse && <p className="text-sm font-medium text-rouge-fonce">Seuil dépassé : vérifiez la procédure applicable avant de poursuivre.</p>}
       </div>
 
       <div className="carte overflow-x-auto">
@@ -98,7 +98,7 @@ export function OngletAvenants({ dossier, recharger, allerA }: PropsOnglet) {
                       <Pencil size={15} />
                     </button>
                     <button
-                      className="btn-icone hover:text-red-600"
+                      className="btn-icone hover:text-rouge-fonce"
                       aria-label="Supprimer"
                       onClick={async () => {
                         if (confirm(`Supprimer l'avenant n° ${a.numero} ? Ses prix nouveaux resteront au BPDE, sans rattachement.`)) {

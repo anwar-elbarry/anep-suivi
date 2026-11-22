@@ -72,9 +72,9 @@ export function FormulaireLigne({
   return (
     <Modal titre={titre} ouvert onFermer={onFermer}>
       <Erreur message={erreur} />
-      <form onSubmit={soumettre} className="grid grid-cols-2 gap-3">
+      <form onSubmit={soumettre} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {champs.map((c) => (
-          <Champ key={c.cle} label={c.label + (c.requis ? " *" : "")} className={c.large || c.type === "zone" ? "col-span-2" : ""}>
+          <Champ key={c.cle} label={c.label + (c.requis ? " *" : "")} className={c.large || c.type === "zone" ? "sm:col-span-2" : ""}>
             {c.type === "zone" ? (
               <textarea className="champ" rows={3} value={String(v[c.cle] ?? "")} onChange={(e) => setV({ ...v, [c.cle]: e.target.value })} />
             ) : c.type === "nombre" ? (
@@ -98,7 +98,7 @@ export function FormulaireLigne({
             )}
           </Champ>
         ))}
-        <div className="col-span-2 flex justify-end gap-2 pt-2">
+        <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
           <button type="button" className="btn" onClick={onFermer}>
             Annuler
           </button>

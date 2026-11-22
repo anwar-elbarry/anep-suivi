@@ -3,16 +3,24 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Mail, Phone } from "lucide-re
 import { dateEffetOS, formatDate, formatMontant, formatPct, montantMarche } from "@/lib/calculs";
 import { syntheseMarche } from "@/lib/synthese";
 import { TYPES_OS } from "@/lib/types";
-import { Barre, Chiffre } from "../ui";
+import { Anneau, Chiffre } from "../ui";
 import type { PropsOnglet } from "./types";
 
 const COULEUR_OS: Record<string, string> = {
-  demarrage: "bg-blue-600",
-  arret: "bg-red-500",
-  reprise: "bg-emerald-500",
-  prolongation: "bg-amber-500",
+  demarrage: "bg-bleu-fonce",
+  arret: "bg-rouge",
+  reprise: "bg-encre",
+  prolongation: "bg-bleu",
   autre: "bg-slate-400",
 };
+
+const initiales = (t: string) =>
+  t
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((m) => m[0]?.toUpperCase())
+    .join("") || "?";
 
 export function OngletApercu({ dossier, allerA }: PropsOnglet) {
   const { marche } = dossier;
@@ -44,18 +52,24 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
         )}
       </div>
 
-      <div className="carte grid gap-4 p-4 md:grid-cols-3">
-        <Barre label="Délai écoulé" valeur={d.tempsEcoule} couleur={s.enRetard ? "bg-red-500" : "bg-slate-500"} />
-        <Barre label="Avancement physique" valeur={p.avancement} />
-        <Barre label="Avancement financier" valeur={f.part} couleur="bg-emerald-500" />
-      </div>
+      <section className="carte grid grid-cols-3 gap-2 px-2 py-5 sm:gap-4 sm:p-6" aria-label="Avancement">
+        <Anneau
+          label="Délai écoulé"
+          valeur={d.tempsEcoule}
+          couleur={s.enRetard ? "#b44b4b" : "#10141a"}
+          sous={s.enRetard ? "délai dépassé" : j !== null ? `${j} j restants` : undefined}
+          taille={96}
+        />
+        <Anneau label="Physique" valeur={p.avancement} sous="pondéré BPDE" taille={96} />
+        <Anneau label="Financier" valeur={f.part} couleur="#83a2db" sous="décomptes / marché" taille={96} />
+      </section>
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           <FriseDelais dossier={dossier} />
 
-          <div className="carte p-4">
-            <h2 className="mb-3 font-semibold">Situation financière</h2>
+          <div className="carte p-5">
+            <h2 className="mb-3 text-lg font-semibold">Situation financière</h2>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm md:grid-cols-3">
               {(
                 [
@@ -80,10 +94,10 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
         </div>
 
         <div className="space-y-5">
-          <div className="carte p-4">
-            <h2 className="mb-3 font-semibold">À surveiller</h2>
+          <div className="carte p-5">
+            <h2 className="mb-3 text-lg font-semibold">À surveiller</h2>
             {s.vigilance.length === 0 ? (
-              <p className="flex items-center gap-2 text-sm text-emerald-700">
+              <p className="flex items-center gap-2 text-sm text-bleu-texte">
                 <CheckCircle2 size={16} /> Rien à signaler.
               </p>
             ) : (
@@ -92,9 +106,9 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
                   <li key={i}>
                     <button className="flex w-full items-start gap-2 text-left text-sm hover:underline" onClick={() => allerA(v.onglet)}>
                       {v.niveau === "erreur" ? (
-                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-600" />
+                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-rouge-fonce" />
                       ) : (
-                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" />
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bleu-fonce" />
                       )}
                       {v.message}
                     </button>
@@ -104,16 +118,20 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
             )}
           </div>
 
-          <div className="carte p-4">
-            <h2 className="mb-3 font-semibold">Intervenants</h2>
+          <div className="carte p-5">
+            <h2 className="mb-3 text-lg font-semibold">Intervenants</h2>
             {dossier.intervenants.length === 0 ? (
               <button className="text-sm text-marque-700 hover:underline" onClick={() => allerA("intervenants")}>
                 Ajouter les intervenants
               </button>
             ) : (
-              <ul className="space-y-2.5 text-sm">
+              <ul className="space-y-3 text-sm">
                 {dossier.intervenants.map((i) => (
-                  <li key={i.id}>
+                  <li key={i.id} className="flex gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bleu-pale text-sm font-semibold text-bleu-texte" aria-hidden>
+                      {initiales(i.nom || i.organisme)}
+                    </span>
+                    <div className="min-w-0">
                     <div className="text-xs text-slate-500">{i.role}</div>
                     <div className="font-medium">
                       {i.nom}
@@ -131,14 +149,15 @@ export function OngletApercu({ dossier, allerA }: PropsOnglet) {
                         </a>
                       )}
                     </div>
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
 
-          <div className="carte p-4">
-            <h2 className="mb-3 font-semibold">Activité récente</h2>
+          <div className="carte p-5">
+            <h2 className="mb-3 text-lg font-semibold">Activité récente</h2>
             {dossier.activites.length === 0 ? (
               <p className="text-sm text-slate-500">Aucune activité.</p>
             ) : (
@@ -163,7 +182,7 @@ function FriseDelais({ dossier }: { dossier: PropsOnglet["dossier"] }) {
   const d = s.delais;
   if (!d.dateDemarrage || !d.finPrevue) {
     return (
-      <div className="carte p-4">
+      <div className="carte p-5">
         <h2 className="mb-2 font-semibold">Échéancier</h2>
         <p className="text-sm text-slate-500">Saisissez l&apos;OS de démarrage (onglet Délais et OS) ou une date de début pour afficher l&apos;échéancier.</p>
       </div>
@@ -177,22 +196,22 @@ function FriseDelais({ dossier }: { dossier: PropsOnglet["dossier"] }) {
       .filter((o) => dateEffetOS(o))
       .map((o) => ({ t: dateEffetOS(o)!.getTime(), label: `${TYPES_OS[o.type]}${o.numero ? ` (${o.numero})` : ""}`, couleur: COULEUR_OS[o.type] })),
     { t: d.finContractuelle!.getTime(), label: "Fin contractuelle", couleur: "bg-slate-800" },
-    { t: d.finPrevue.getTime(), label: "Fin prévue", couleur: s.enRetard ? "bg-red-600" : "bg-marque-700" },
+    { t: d.finPrevue.getTime(), label: "Fin prévue", couleur: s.enRetard ? "bg-rouge-fonce" : "bg-marque-700" },
   ].sort((a, b) => a.t - b.t);
 
   return (
-    <div className="carte p-4">
-      <h2 className="mb-4 font-semibold">Échéancier</h2>
+    <div className="carte p-5">
+      <h2 className="mb-4 text-lg font-semibold">Échéancier</h2>
       <div className="relative mx-2 mb-2 h-3 rounded-full bg-slate-100">
         {d.arrets.map((a, i) => (
           <div
             key={i}
-            className="absolute top-0 h-3 bg-red-200"
+            className="absolute top-0 h-3 bg-rouge/30"
             style={{ left: pos(a.debut.getTime()), width: `calc(${pos((a.fin ?? s.aujourdhui).getTime())} - ${pos(a.debut.getTime())})` }}
             title="Période d'arrêt"
           />
         ))}
-        <div className="absolute top-0 h-3 rounded-l-full bg-marque-500/30" style={{ width: pos(s.aujourdhui.getTime()) }} />
+        <div className="absolute top-0 h-3 rounded-l-full bg-bleu/30" style={{ width: pos(s.aujourdhui.getTime()) }} />
         <div className="absolute -top-1.5 h-6 w-0.5 bg-slate-900" style={{ left: pos(s.aujourdhui.getTime()) }} title="Aujourd'hui" />
         {reperes.map((r, i) => (
           <div key={i} className={`absolute top-0.5 h-2 w-2 -translate-x-1 rounded-full ring-2 ring-white ${r.couleur}`} style={{ left: pos(r.t) }} title={r.label} />

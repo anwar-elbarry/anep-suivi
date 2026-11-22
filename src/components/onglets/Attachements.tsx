@@ -20,9 +20,9 @@ const CHAMPS: DefChamp[] = [
 ];
 
 const COULEURS: Record<string, string> = {
-  "En attente": "bg-amber-100 text-amber-800",
-  Validé: "bg-emerald-100 text-emerald-800",
-  Rejeté: "bg-red-100 text-red-800",
+  "En attente": "bg-bleu-pale text-bleu-texte",
+  Validé: "bg-bleu-pale text-bleu-texte",
+  Rejeté: "bg-rouge-pale text-rouge-fonce",
 };
 
 export function OngletAttachements({ dossier, recharger, allerA }: PropsOnglet) {
@@ -136,7 +136,7 @@ export function OngletAttachements({ dossier, recharger, allerA }: PropsOnglet) 
                       <td className="num">{formatMontant(a.montant)}</td>
                       <td className="num">
                         {lignes.length}
-                        {nonRapp > 0 && <span className="ml-1 text-xs text-amber-700">({nonRapp} non rapprochée(s))</span>}
+                        {nonRapp > 0 && <span className="ml-1 text-xs text-bleu-texte">({nonRapp} non rapprochée(s))</span>}
                       </td>
                       <td>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${COULEURS[a.statut]}`}>{a.statut}</span>
@@ -160,7 +160,7 @@ export function OngletAttachements({ dossier, recharger, allerA }: PropsOnglet) 
                           <Pencil size={15} />
                         </button>
                         <button
-                          className="btn-icone hover:text-red-600"
+                          className="btn-icone hover:text-rouge-fonce"
                           aria-label="Supprimer"
                           onClick={async () => {
                             if (confirm(`Supprimer l'attachement n° ${a.numero} et ses lignes ?`)) {
@@ -200,7 +200,7 @@ export function OngletAttachements({ dossier, recharger, allerA }: PropsOnglet) 
                                       <td>{l.designation}</td>
                                       <td>{l.unite}</td>
                                       <td className="num">{formatQte(Number(l.quantite))}</td>
-                                      <td className={b ? "text-emerald-700" : "text-amber-700"}>{b ? `Prix n° ${b.numero || "?"}` : "Non rapprochée"}</td>
+                                      <td className={b ? "text-bleu-texte" : "text-bleu-texte"}>{b ? `Prix n° ${b.numero || "?"}` : "Non rapprochée"}</td>
                                     </tr>
                                   );
                                 })}
@@ -315,7 +315,7 @@ function ApercuImport({
         {remplace && " Les lignes actuelles de l'attachement seront remplacées."}
       </p>
       {res.avertissements.map((a) => (
-        <p key={a} className="mb-1 text-sm text-amber-700">
+        <p key={a} className="mb-1 text-sm text-bleu-texte">
           • {a}
         </p>
       ))}
@@ -339,7 +339,7 @@ function ApercuImport({
                   <td>{l.designation}</td>
                   <td>{l.unite}</td>
                   <td className="num">{formatQte(l.quantite)}</td>
-                  <td className={b ? "text-emerald-700" : "text-amber-700"}>{b ? `n° ${b.numero || "?"}` : "—"}</td>
+                  <td className={b ? "text-bleu-texte" : "text-bleu-texte"}>{b ? `n° ${b.numero || "?"}` : "—"}</td>
                 </tr>
               );
             })}

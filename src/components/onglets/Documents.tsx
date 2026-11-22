@@ -134,7 +134,7 @@ export function OngletDocuments({ dossier, recharger }: PropsOnglet) {
               {docs.map((d) => {
                 const retard = documentEnRetard(d, auj);
                 return (
-                  <tr key={d.id} className={retard ? "bg-red-50/60" : ""}>
+                  <tr key={d.id} className={retard ? "bg-rouge-pale/60" : ""}>
                     <td>
                       <div className="font-medium">{d.nom}</div>
                       {d.observations && <div className="text-xs text-slate-500">{d.observations}</div>}
@@ -142,7 +142,7 @@ export function OngletDocuments({ dossier, recharger }: PropsOnglet) {
                     <td className="text-slate-600">{d.prestation || "—"}</td>
                     <td className="whitespace-nowrap text-slate-600">{d.article_cps || "—"}</td>
                     <td className="text-slate-600">{d.responsable}</td>
-                    <td className={`whitespace-nowrap ${retard ? "font-semibold text-red-600" : ""}`}>{formatDate(d.echeance)}</td>
+                    <td className={`whitespace-nowrap ${retard ? "font-semibold text-rouge-fonce" : ""}`}>{formatDate(d.echeance)}</td>
                     <td>
                       <select
                         className={`cursor-pointer rounded-full border-0 px-2 py-0.5 text-xs font-medium outline-none focus:ring-2 focus:ring-marque-100 ${COULEURS_DOC[d.statut]}`}
@@ -161,7 +161,7 @@ export function OngletDocuments({ dossier, recharger }: PropsOnglet) {
                         <Pencil size={15} />
                       </button>
                       <button
-                        className="btn-icone hover:text-red-600"
+                        className="btn-icone hover:text-rouge-fonce"
                         aria-label="Supprimer"
                         onClick={async () => {
                           if (confirm(`Supprimer « ${d.nom} » ?`)) {
@@ -212,7 +212,7 @@ function FiltreBouton({ actif, alerte, onClick, children }: { actif: boolean; al
     <button
       onClick={onClick}
       className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-        actif ? "bg-slate-800 text-white" : alerte ? "bg-red-100 text-red-700 hover:bg-red-200" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+        actif ? "bg-encre text-white" : alerte ? "bg-rouge-pale text-rouge-fonce hover:bg-rouge/30" : "bg-white/70 text-slate-600 hover:bg-white"
       }`}
     >
       {children}

@@ -1,7 +1,8 @@
 "use client";
-import { BookOpen, ChevronDown, ChevronRight, Download, FileSpreadsheet, FileText, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Download, FileSpreadsheet, FileText, Library, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { EnTete } from "@/components/EnTete";
+import { CLASSE_PAGE, EnTete } from "@/components/EnTete";
+import { CreerAvecIA } from "@/components/modeles/CreerAvecIA";
 import { AideChamps } from "@/components/modeles/AideChamps";
 import { AjoutModeles } from "@/components/modeles/AjoutModeles";
 import { ResumeAnalyse } from "@/components/modeles/ResumeAnalyse";
@@ -25,6 +26,7 @@ export default function PageModeles() {
   const [edite, setEdite] = useState<Modele | null>(null);
   const [aide, setAide] = useState(false);
   const [occupe, setOccupe] = useState(false);
+  const [ia, setIa] = useState<{ categorie?: string; description?: string } | null>(null);
 
   const charger = useCallback(async () => {
     try {
@@ -64,28 +66,32 @@ export default function PageModeles() {
   return (
     <>
       <EnTete />
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">Modèles de documents</h1>
-            <p className="text-sm text-slate-600">
-              Décomptes, bordereaux d&apos;envoi, notes de pénalités, courriers… Déposez vos modèles Word ou Excel : ils se remplissent avec les données de
-              chaque marché depuis sa fiche (bouton « Générer un document »).
+      <main className={`${CLASSE_PAGE} space-y-6`}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-sm text-slate-500">Bibliothèque</p>
+            <h1 className="text-3xl font-semibold sm:text-4xl">Modèles de documents</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Décomptes, bordereaux d&apos;envoi, notes de pénalités, courriers… Déposez vos modèles Word ou Excel : ils se remplissent avec les
+              données de chaque marché depuis sa fiche (« Générer »).
             </p>
           </div>
-          <div className="flex gap-2">
-            <button className="btn" onClick={() => setAide(!aide)} aria-expanded={aide}>
-              <BookOpen size={15} /> Données disponibles {aide ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-primaire" onClick={() => setIa({})}>
+              <Sparkles size={15} /> Créer avec l&apos;IA
             </button>
             <button className="btn" onClick={exemples} disabled={occupe || modeles === null}>
-              <Sparkles size={15} /> {occupe ? "Import…" : "Ajouter les modèles d'exemple"}
+              <Library size={15} /> {occupe ? "Import…" : "Modèles d'exemple"}
+            </button>
+            <button className="btn" onClick={() => setAide(!aide)} aria-expanded={aide}>
+              <BookOpen size={15} /> Données disponibles {aide ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </button>
           </div>
         </div>
 
         <Erreur message={erreur} />
         {aide && (
-          <section className="carte p-5">
+          <section className="carte p-4 sm:p-6">
             <AideChamps />
           </section>
         )}
@@ -94,7 +100,9 @@ export default function PageModeles() {
 
         {modeles === null && !erreur && <p className="py-6 text-center text-sm text-slate-500">Chargement…</p>}
         {modeles?.length === 0 && (
-          <Vide>Aucun modèle. Déposez vos fichiers ci-dessus ou ajoutez les modèles d&apos;exemple pour voir la syntaxe.</Vide>
+          <Vide>
+            Aucun modèle. Déposez vos fichiers ci-dessus, ajoutez les modèles d&apos;exemple, ou créez-en un avec l&apos;IA.
+          </Vide>
         )}
 
         {parCategorie.map(([categorie, liste]) => (
@@ -104,7 +112,19 @@ export default function PageModeles() {
             </h2>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {liste.map((m) => (
-                <CarteModele key={m.id} modele={m} onModifier={() => setEdite(m)} onChange={charger} onErreur={setErreur} />
+                <CarteModele
+                  key={m.id}
+                  modele={m}
+                  onModifier={() => setEdite(m)}
+                  onChange={charger}
+                  onErreur={setErreur}
+                  onPrompt={() =>
+                    setIa({
+                      categorie: m.categorie,
+                      description: `Modèle de même nature que « ${m.nom} »${m.description ? ` (${m.description})` : ""}, à adapter : `,
+                    })
+                  }
+                />
               ))}
             </div>
           </section>
@@ -113,6 +133,7 @@ export default function PageModeles() {
 
       {depot && <AjoutModeles fichiers={depot} onFermer={() => setDepot(null)} onAjoute={charger} />}
       {edite && <EditionModele modele={edite} onFermer={() => setEdite(null)} onEnregistre={charger} />}
+      {ia && <CreerAvecIA initial={ia} onFermer={() => setIa(null)} onAjoute={charger} />}
     </>
   );
 }
@@ -122,18 +143,22 @@ function CarteModele({
   onModifier,
   onChange,
   onErreur,
+  onPrompt,
 }: {
   modele: Modele;
   onModifier: () => void;
   onChange: () => void;
   onErreur: (e: string) => void;
+  onPrompt: () => void;
 }) {
   const [details, setDetails] = useState(false);
   const Icone = m.format === "xlsx" ? FileSpreadsheet : FileText;
   return (
-    <div className="carte flex flex-col p-4">
+    <div className="carte flex flex-col p-5">
       <div className="flex items-start gap-3">
-        <Icone size={22} className={m.format === "xlsx" ? "text-emerald-600" : "text-marque-600"} />
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${m.format === "xlsx" ? "bg-bleu-pale text-bleu-texte" : "bg-encre text-white"}`}>
+          <Icone size={20} />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="font-medium">{m.nom}</p>
           {m.description && <p className="text-sm text-slate-600">{m.description}</p>}
@@ -153,6 +178,9 @@ function CarteModele({
           {details ? "Masquer les champs" : "Voir les champs"}
         </button>
         <span className="flex-1" />
+        <button className="btn-icone" title="Créer une variante avec l'IA (prompt)" aria-label="Créer une variante avec l'IA" onClick={onPrompt}>
+          <Sparkles size={15} />
+        </button>
         <button
           className="btn-icone"
           title="Télécharger le modèle (pour le modifier dans Word / Excel)"
@@ -172,7 +200,7 @@ function CarteModele({
           <Pencil size={15} />
         </button>
         <button
-          className="btn-icone hover:text-red-600"
+          className="btn-icone hover:text-rouge-fonce"
           aria-label="Supprimer"
           onClick={async () => {
             if (!confirm(`Supprimer le modèle « ${m.nom} » ?`)) return;
@@ -200,7 +228,7 @@ function EditionModele({ modele, onFermer, onEnregistre }: { modele: Modele; onF
     <Modal titre="Modifier le modèle" ouvert onFermer={onFermer}>
       <Erreur message={erreur} />
       <form
-        className="grid grid-cols-2 gap-3"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
         onSubmit={async (e) => {
           e.preventDefault();
           try {
@@ -212,7 +240,7 @@ function EditionModele({ modele, onFermer, onEnregistre }: { modele: Modele; onF
           }
         }}
       >
-        <Champ label="Nom" className="col-span-2">
+        <Champ label="Nom" className="sm:col-span-2">
           <input className="champ" value={nom} onChange={(e) => setNom(e.target.value)} />
         </Champ>
         <Champ label="Catégorie">
@@ -222,13 +250,13 @@ function EditionModele({ modele, onFermer, onEnregistre }: { modele: Modele; onF
             ))}
           </select>
         </Champ>
-        <Champ label="Description" className="col-span-2">
+        <Champ label="Description" className="sm:col-span-2">
           <textarea className="champ" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Champ>
-        <p className="col-span-2 text-xs text-slate-500">
+        <p className="sm:col-span-2 text-xs text-slate-500">
           Pour changer le contenu : téléchargez le modèle, modifiez-le dans Word ou Excel, puis déposez la nouvelle version.
         </p>
-        <div className="col-span-2 flex justify-end gap-2">
+        <div className="sm:col-span-2 flex justify-end gap-2">
           <button type="button" className="btn" onClick={onFermer}>
             Annuler
           </button>

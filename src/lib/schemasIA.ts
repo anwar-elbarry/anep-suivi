@@ -46,3 +46,52 @@ export const SchemaParametres = z.object({
   remarques: z.array(z.string()).describe("Points d'attention : ambiguïtés, renvois au CCAG, valeurs contradictoires"),
 });
 export type ParametresCps = z.infer<typeof SchemaParametres>;
+
+// ---------------------------------------------------------------------------
+// Modèle de document conçu par Claude (structure convertie en .docx côté navigateur)
+// ---------------------------------------------------------------------------
+
+export const LISTES_MODELE = [
+  "lignes_decompte",
+  "bpde",
+  "ecarts",
+  "decomptes",
+  "ordres_service",
+  "avenants",
+  "documents",
+  "reserves",
+  "garanties",
+  "intervenants",
+] as const;
+
+const BlocModele = z.object({
+  type: z
+    .enum(["titre", "paragraphe", "infos", "tableau", "liste", "signatures", "saut"])
+    .describe(
+      "titre : intitulé ; paragraphe : texte ; infos : tableau à 2 colonnes libellé / valeur ; tableau : liste répétée d'une donnée ; liste : puces ; signatures : cadres de signature ; saut : ligne vide",
+    ),
+  texte: z.string().nullable().describe("Texte (titre, paragraphe), balises entre accolades comprises ; null sinon"),
+  niveau: z.number().nullable().describe("Titre : 1 (principal) ou 2 (section) ; null sinon"),
+  alignement: z.enum(["gauche", "centre", "droite", "justifie"]).nullable(),
+  gras: z.boolean().nullable(),
+  lignes: z
+    .array(z.object({ libelle: z.string(), valeur: z.string() }))
+    .nullable()
+    .describe("Bloc infos : couples libellé / valeur (la valeur contient en général une balise)"),
+  liste: z.enum(LISTES_MODELE).nullable().describe("Bloc tableau : nom de la liste répétée"),
+  colonnes: z
+    .array(z.object({ entete: z.string(), champ: z.string().describe("Champ de la liste, sans accolades") }))
+    .nullable()
+    .describe("Bloc tableau : colonnes, chaque colonne affiche un champ de la liste"),
+  elements: z.array(z.string()).nullable().describe("Bloc liste : éléments à puces"),
+  cadres: z.array(z.string()).nullable().describe("Bloc signatures : intitulés des cadres (ex. « Établi par »)"),
+});
+
+export const SchemaModeleIA = z.object({
+  nom: z.string().describe("Nom court du modèle"),
+  description: z.string().describe("Une phrase : usage du modèle"),
+  blocs: z.array(BlocModele),
+  remarques: z.array(z.string()).describe("Points à vérifier par l'utilisateur avant usage"),
+});
+export type ModeleIA = z.infer<typeof SchemaModeleIA>;
+export type BlocModeleIA = ModeleIA["blocs"][number];

@@ -62,7 +62,7 @@ export default function Connexion() {
           <Erreur message="Supabase n'est pas configuré : renseignez NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (voir README)." />
         )}
         <Erreur message={erreur} />
-        {info && <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">{info}</div>}
+        {info && <div className="mb-3 rounded-lg border border-bleu/30 bg-bleu-pale px-3 py-2 text-sm text-bleu-texte">{info}</div>}
         <form onSubmit={soumettre} className="space-y-3">
           <label className="block">
             <span className="etiquette">E-mail</span>

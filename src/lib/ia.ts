@@ -3,7 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { PropositionDocument } from "./types";
-import { SchemaParametres, SchemaPropositions, type ParametresCps } from "./schemasIA";
+import { SchemaModeleIA, SchemaParametres, SchemaPropositions, type ModeleIA, type ParametresCps } from "./schemasIA";
+import { promptInterne, type DemandeModele } from "./modeles/prompt";
 
 export type { ParametresCps };
 
@@ -33,7 +34,7 @@ export type ContenuSource =
 
 /** Appel générique à Claude avec un document et une sortie structurée validée par Zod. */
 async function appelerClaude<S extends z.ZodType>(
-  source: ContenuSource,
+  source: ContenuSource | null,
   systeme: string,
   consigne: string,
   schema: S,
@@ -44,8 +45,9 @@ async function appelerClaude<S extends z.ZodType>(
   }
   const client = new Anthropic();
 
-  const bloc: Anthropic.Beta.BetaContentBlockParam =
-    source.type === "pdf"
+  const bloc: Anthropic.Beta.BetaContentBlockParam | null = !source
+    ? null
+    : source.type === "pdf"
       ? {
           type: "document",
           title: source.titre,
@@ -66,7 +68,7 @@ async function appelerClaude<S extends z.ZodType>(
       fallbacks: "default",
       system: systeme,
       output_config: { effort, format: betaZodOutputFormat(schema) },
-      messages: [{ role: "user", content: [bloc, { type: "text", text: consigne }] }],
+      messages: [{ role: "user", content: bloc ? [bloc, { type: "text", text: consigne }] : [{ type: "text", text: consigne }] }],
     });
   } catch (e) {
     if (e instanceof Anthropic.RateLimitError) throw new ErreurIA("Service Claude saturé, réessayez dans un instant", 429);
@@ -119,4 +121,17 @@ export async function extraireParametres(source: ContenuSource, contexte: string
     SchemaParametres,
     "high",
   );
+}
+
+// ---------------------------------------------------------------------------
+// Conception d'un modèle de document
+// ---------------------------------------------------------------------------
+
+const SYSTEME_MODELE = `Tu conçois des modèles de documents administratifs (décomptes, bordereaux d'envoi, notes et décisions,
+courriers, procès-verbaux) pour le suivi de marchés publics de travaux. Les modèles sont remplis automatiquement par une
+application à partir de balises entre accolades. Tu respectes strictement la syntaxe et le catalogue fournis, tu n'inventes
+aucune référence juridique et tu restes sobre : le document doit pouvoir être signé tel quel après relecture.`;
+
+export async function concevoirModele(d: DemandeModele): Promise<ModeleIA> {
+  return appelerClaude(null, SYSTEME_MODELE, promptInterne(d), SchemaModeleIA, "medium");
 }

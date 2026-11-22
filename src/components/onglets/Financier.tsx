@@ -55,13 +55,13 @@ export function OngletFinancier({ dossier, recharger }: PropsOnglet) {
         <Chiffre label="Reste à réaliser" valeur={formatMontant(s.reste)} alerte={s.reste < 0} />
       </div>
       <div className="carte p-4">
-        <Barre label="Avancement financier" valeur={s.part} couleur="bg-emerald-500" />
+        <Barre label="Avancement financier" valeur={s.part} couleur="bg-encre" />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="carte p-4">
           <h2 className="mb-3 font-semibold">Paramètres</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ParametreNombre marche={marche} cle="taux_retenue" label="Taux de retenue de garantie (%)" recharger={recharger} vide="zero" />
             <ParametreNombre marche={marche} cle="plafond_retenue" label="Plafond de la retenue (% du marché)" recharger={recharger} vide="zero" />
             <ParametreNombre marche={marche} cle="taux_tva" label="Taux de TVA (%)" recharger={recharger} vide="zero" />
@@ -80,7 +80,7 @@ export function OngletFinancier({ dossier, recharger }: PropsOnglet) {
 
         <div className="carte p-4">
           <h2 className="mb-3 font-semibold">Avance</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ParametreNombre marche={marche} cle="avance_montant" label="Montant de l'avance (TTC)" recharger={recharger} vide="zero" />
             <ParametreDate marche={marche} cle="avance_date" label="Date de versement" recharger={recharger} />
             <ParametreNombre
@@ -100,7 +100,7 @@ export function OngletFinancier({ dossier, recharger }: PropsOnglet) {
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Dû à ce stade</dt>
-                <dd className={`font-medium tabular-nums ${rembDu > s.cumulRemboursement + 0.01 ? "text-amber-700" : ""}`}>{formatMontant(rembDu)}</dd>
+                <dd className={`font-medium tabular-nums ${rembDu > s.cumulRemboursement + 0.01 ? "text-bleu-texte" : ""}`}>{formatMontant(rembDu)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Reste à rembourser</dt>
@@ -171,7 +171,7 @@ export function OngletFinancier({ dossier, recharger }: PropsOnglet) {
                       <Pencil size={15} />
                     </button>
                     <button
-                      className="btn-icone hover:text-red-600"
+                      className="btn-icone hover:text-rouge-fonce"
                       aria-label="Supprimer"
                       onClick={async () => {
                         if (confirm(`Supprimer le décompte n° ${d.numero} ?`)) {

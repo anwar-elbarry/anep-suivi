@@ -48,7 +48,7 @@ export function OngletBpde({ dossier, recharger }: PropsOnglet) {
         <Chiffre label="Alertes" valeur={alertes.length} alerte={alertes.some((a) => a.niveau === "erreur")} />
       </div>
       {globales.map((a) => (
-        <div key={a.message} className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <div key={a.message} className="flex items-center gap-2 rounded-lg border border-bleu/30 bg-bleu-pale px-3 py-2 text-sm text-bleu-texte">
           <AlertTriangle size={15} /> {a.message}
         </div>
       ))}
@@ -86,7 +86,7 @@ export function OngletBpde({ dossier, recharger }: PropsOnglet) {
                 const a = parLigne.get(l.id);
                 const erreurLigne = a?.some((x) => x.niveau === "erreur");
                 return (
-                  <tr key={l.id} className={erreurLigne ? "bg-red-50/60" : a ? "bg-amber-50/60" : ""}>
+                  <tr key={l.id} className={erreurLigne ? "bg-rouge-pale/60" : a ? "bg-bleu-pale/60" : ""}>
                     <td>
                       {l.avenant_id && <span className="mb-1 block text-[10px] font-semibold uppercase text-marque-700">Prix nouveau</span>}
                       <input className="champ px-2 py-1" defaultValue={l.numero} onBlur={(e) => maj(l, "numero", e.target.value.trim())} aria-label="N° de prix" />
@@ -100,7 +100,7 @@ export function OngletBpde({ dossier, recharger }: PropsOnglet) {
                         aria-label="Désignation"
                       />
                       {a?.map((x) => (
-                        <div key={x.message} className={`mt-1 text-xs ${x.niveau === "erreur" ? "text-red-700" : "text-amber-700"}`}>
+                        <div key={x.message} className={`mt-1 text-xs ${x.niveau === "erreur" ? "text-rouge-fonce" : "text-bleu-texte"}`}>
                           {x.message}
                         </div>
                       ))}
@@ -117,7 +117,7 @@ export function OngletBpde({ dossier, recharger }: PropsOnglet) {
                     <td className="num pt-3">{formatMontant(montantLigneHT(l))}</td>
                     <td>
                       <button
-                        className="btn-icone hover:text-red-600"
+                        className="btn-icone hover:text-rouge-fonce"
                         aria-label="Supprimer la ligne"
                         onClick={async () => {
                           if (confirm("Supprimer cette ligne du BPDE ?")) {

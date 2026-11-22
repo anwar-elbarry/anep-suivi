@@ -19,11 +19,11 @@ const CHAMPS: DefChamp[] = [
 ];
 
 const COULEURS: Record<string, string> = {
-  demarrage: "bg-blue-100 text-blue-800",
-  arret: "bg-red-100 text-red-800",
-  reprise: "bg-emerald-100 text-emerald-800",
-  prolongation: "bg-amber-100 text-amber-800",
-  autre: "bg-slate-100 text-slate-700",
+  demarrage: "bg-bleu-pale text-bleu-texte",
+  arret: "bg-rouge-pale text-rouge-fonce",
+  reprise: "bg-bleu-pale text-bleu-texte",
+  prolongation: "bg-bleu-pale text-bleu-texte",
+  autre: "bg-slate-200/80 text-slate-700",
 };
 
 export function OngletDelais({ dossier, recharger }: PropsOnglet) {
@@ -54,7 +54,7 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
       </div>
 
       {d.anomalies.length > 0 && (
-        <ul className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+        <ul className="rounded-lg border border-bleu/30 bg-bleu-pale px-4 py-2 text-sm text-bleu-texte">
           {d.anomalies.map((a) => (
             <li key={a}>• {a}</li>
           ))}
@@ -101,7 +101,7 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
                       <Pencil size={15} />
                     </button>
                     <button
-                      className="btn-icone hover:text-red-600"
+                      className="btn-icone hover:text-rouge-fonce"
                       aria-label="Supprimer"
                       onClick={async () => {
                         if (confirm("Supprimer cet ordre de service ?")) {
@@ -122,12 +122,12 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
       <div className="carte p-4">
         <h2 className="mb-3 font-semibold">Pénalités de retard</h2>
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ParametreNombre marche={m} cle="penalite_taux_millieme" label="Taux (‰ du montant par jour)" recharger={recharger} aide="ex. 1 pour 1/1000" />
             <ParametreNombre marche={m} cle="penalite_plafond" label="Plafond (% du montant)" recharger={recharger} aide="vide = sans plafond" />
             <ParametreNombre marche={m} cle="penalite_jours_exoneres" label="Jours exonérés" recharger={recharger} vide="zero" aide="retards justifiés, acceptés par le MO" />
             <ParametreDate marche={m} cle="date_reception_provisoire" label="Réception provisoire" recharger={recharger} aide="arrête le décompte du retard" />
-            <label className="col-span-2 block">
+            <label className="sm:col-span-2 block">
               <span className="etiquette">Base de calcul</span>
               <select
                 className="champ"
@@ -159,7 +159,7 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
             <dt className="text-slate-500">Plafond</dt>
             <dd className="font-medium tabular-nums">{pen.plafond === null ? "—" : formatMontant(pen.plafond)}</dd>
             <dt className="font-semibold">Pénalités encourues</dt>
-            <dd className={`font-semibold tabular-nums ${pen.montant > 0 ? "text-red-600" : ""}`}>
+            <dd className={`font-semibold tabular-nums ${pen.montant > 0 ? "text-rouge-fonce" : ""}`}>
               {formatMontant(pen.montant)}
               {pen.plafonne && " (plafond atteint)"}
             </dd>

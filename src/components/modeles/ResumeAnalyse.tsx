@@ -7,13 +7,13 @@ export function ResumeAnalyse({ analyse }: { analyse: Pick<Analyse, "connus" | "
   return (
     <div className="space-y-2 text-sm">
       {analyse.erreurs?.map((e) => (
-        <p key={e} className="flex gap-2 text-red-700">
+        <p key={e} className="flex gap-2 text-rouge-fonce">
           <XCircle size={16} className="mt-0.5 shrink-0" /> {e}
         </p>
       ))}
       {!analyse.erreurs?.length && (
       <div className="flex gap-2">
-        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+        <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-bleu-texte" />
         <div>
           <span className="font-medium">{analyse.connus.length} donnée(s) remplie(s) automatiquement</span>
           {analyse.connus.length > 0 && <p className="text-xs text-slate-500">{analyse.connus.join(", ")}</p>}
@@ -30,12 +30,12 @@ export function ResumeAnalyse({ analyse }: { analyse: Pick<Analyse, "connus" | "
         </div>
       )}
       {analyse.avertissements.map((a) => (
-        <p key={a} className="flex gap-2 text-amber-800">
+        <p key={a} className="flex gap-2 text-bleu-texte">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {a}
         </p>
       ))}
       {analyse.connus.length === 0 && analyse.libres.length === 0 && !analyse.erreurs?.length && (
-        <p className="text-amber-800">Aucune balise trouvée : le document sera produit tel quel. Voir l&apos;aide pour insérer des champs.</p>
+        <p className="text-bleu-texte">Aucune balise trouvée : le document sera produit tel quel. Voir l&apos;aide pour insérer des champs.</p>
       )}
     </div>
   );

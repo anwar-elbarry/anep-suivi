@@ -125,6 +125,26 @@ exprimés en dirhams. Excel : champs simples uniquement (pas de tableaux répét
 les modèles sont stockés dans le bucket privé `scans` (`<utilisateur>/modeles/`). Quatre modèles d'exemple sont fournis
 (`public/modeles-exemples/`) et s'ajoutent à la bibliothèque en un clic.
 
+### Créer un modèle avec l'IA
+
+Bouton **Créer avec l'IA** (page Modèles) ou icône ✦ sur un modèle existant (variante) :
+
+- **Copier le prompt** : prompt complet (besoin décrit, syntaxe des balises, catalogue des données, règles de rédaction)
+  à coller dans l'agent IA de votre choix ; le fichier .docx obtenu se dépose ensuite dans la bibliothèque ;
+- **Générer avec Claude** : Claude conçoit la structure du document (route `/api/ia/modele`, sortie structurée),
+  l'application construit le .docx, l'analyse et l'ajoute à la bibliothèque après relecture.
+
+Le prompt interdit d'inventer des références juridiques (champs à saisir à la place) et impose la mention
+« PROJET — À VALIDER » sur les décisions et mises en demeure.
+
+## Interface
+
+Charte : encre `#10141A`, gris `#E4E4E4`, bleu `#83A2DB` (ton soutenu `#5B7FC7` pour les jauges, contraste ≥ 3:1),
+rouge `#CE6969` réservé aux alertes, police Outfit (proche de Lufga, police commerciale : remplaçable via `next/font/local`
+si vous disposez d'une licence). Cartes arrondies translucides, navigation en pilules, boutons ronds.
+Mobile : barre de navigation en bas d'écran, onglets défilants, fenêtres en feuilles montant du bas, tableaux défilant
+horizontalement dans leur carte.
+
 ## Données
 
 Les données sont dans Supabase et accessibles depuis n'importe quel poste après connexion. Le bouton **Sauvegarde**

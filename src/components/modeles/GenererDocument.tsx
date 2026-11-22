@@ -43,7 +43,10 @@ export function GenererDocument({ dossier }: { dossier: DossierMarche }) {
   return (
     <>
       <button className="btn" onClick={() => setOuvert(true)}>
-        <FileOutput size={14} /> Générer un document
+        <FileOutput size={15} />
+        <span>
+          Générer<span className="hidden sm:inline"> un document</span>
+        </span>
       </button>
       {ouvert && <Fenetre dossier={dossier} onFermer={() => setOuvert(false)} />}
     </>

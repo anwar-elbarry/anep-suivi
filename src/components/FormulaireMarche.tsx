@@ -64,7 +64,7 @@ export function FormulaireMarche({
   return (
     <Modal titre={marche ? "Modifier le marché" : "Nouveau marché"} ouvert={ouvert} onFermer={onFermer}>
       <Erreur message={erreur} />
-      <form onSubmit={soumettre} className="grid grid-cols-2 gap-3">
+      <form onSubmit={soumettre} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Champ label="N° du marché *">
           <input className="champ" required value={v.numero} onChange={(e) => maj({ numero: e.target.value })} />
         </Champ>
@@ -75,10 +75,10 @@ export function FormulaireMarche({
             ))}
           </select>
         </Champ>
-        <Champ label="Objet des travaux" className="col-span-2">
+        <Champ label="Objet des travaux" className="sm:col-span-2">
           <textarea className="champ" rows={2} value={v.objet} onChange={(e) => maj({ objet: e.target.value })} />
         </Champ>
-        <Champ label="Entreprise titulaire" className="col-span-2">
+        <Champ label="Entreprise titulaire" className="sm:col-span-2">
           <input className="champ" value={v.entreprise} onChange={(e) => maj({ entreprise: e.target.value })} />
         </Champ>
         <Champ label="Montant TTC">
@@ -87,10 +87,10 @@ export function FormulaireMarche({
         <Champ label="Délai (mois)">
           <ChampNombre valeur={v.duree_mois} onChange={(n) => maj({ duree_mois: n ?? 0 })} />
         </Champ>
-        <Champ label="Date de début (à défaut d'OS de démarrage)" className="col-span-2">
+        <Champ label="Date de début (à défaut d'OS de démarrage)" className="sm:col-span-2">
           <input className="champ" type="date" value={v.date_debut ?? ""} onChange={(e) => maj({ date_debut: e.target.value || null })} />
         </Champ>
-        <div className="col-span-2 flex justify-end gap-2 pt-2">
+        <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
           <button type="button" className="btn" onClick={onFermer}>
             Annuler
           </button>

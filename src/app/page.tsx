@@ -3,10 +3,10 @@ import { CalendarClock, FileText, Plus, Search, Wallet, Ruler } from "lucide-rea
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { EnTete } from "@/components/EnTete";
+import { CLASSE_PAGE, EnTete } from "@/components/EnTete";
 import { FormulaireMarche } from "@/components/FormulaireMarche";
-import { BadgeStatut, Barre, Chiffre, Erreur, Vide } from "@/components/ui";
-import { formatDate, formatMontant, formatPct, montantMarche } from "@/lib/calculs";
+import { Anneau, BadgeStatut, Barre, Chiffre, Erreur, Vide } from "@/components/ui";
+import { formatDate, formatMontant, montantMarche } from "@/lib/calculs";
 import { chargerPortefeuille } from "@/lib/donnees";
 import { syntheseMarche } from "@/lib/synthese";
 import { STATUTS_MARCHE, type Marche } from "@/lib/types";
@@ -74,34 +74,56 @@ export default function Accueil() {
   return (
     <>
       <EnTete />
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        <Erreur message={erreur} />
-        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Chiffre label="Marchés ouverts" valeur={resume.ouverts} sous={`${cartes.length} au total`} />
-          <Chiffre label="En retard" valeur={resume.retard} alerte={resume.retard > 0} />
-          <Chiffre label="Montant total TTC" valeur={formatMontant(resume.total)} />
-          <Chiffre label="Avancement physique moyen" valeur={formatPct(resume.physique)} sous="marchés ouverts" />
-        </div>
-
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="relative min-w-60 flex-1">
-            <Search size={16} className="pointer-events-none absolute left-3 top-2.5 text-slate-400" />
-            <input
-              className="champ pl-9"
-              placeholder="Rechercher par n°, objet ou entreprise"
-              value={recherche}
-              onChange={(e) => setRecherche(e.target.value)}
-            />
+      <main className={CLASSE_PAGE}>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-sm text-slate-500">Portefeuille</p>
+            <h1 className="text-3xl font-semibold sm:text-4xl">Marchés</h1>
           </div>
-          <select className="champ w-auto" value={filtre} onChange={(e) => setFiltre(e.target.value)} aria-label="Filtrer par statut">
-            <option value="">Tous les statuts</option>
-            {STATUTS_MARCHE.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
           <button className="btn-primaire" onClick={() => setCreation(true)}>
             <Plus size={16} /> Nouveau marché
           </button>
+        </div>
+        <Erreur message={erreur} />
+
+        <section className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto]">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <Chiffre label="Marchés ouverts" valeur={resume.ouverts} sous={`${cartes.length} au total`} />
+            <Chiffre label="En retard" valeur={resume.retard} alerte={resume.retard > 0} sous={resume.retard ? "délai dépassé" : "aucun"} />
+            <div className="col-span-2 grid md:col-span-1">
+              <Chiffre label="Montant total TTC" valeur={formatMontant(resume.total)} sous="avec avenants" />
+            </div>
+          </div>
+          <div className="carte flex items-center px-5 py-3">
+            <Anneau label="Avancement physique moyen" valeur={resume.physique} sous="marchés ouverts, pondéré BPDE" taille={72} horizontal />
+          </div>
+        </section>
+
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-2.5 text-slate-400" />
+            <input
+              className="champ rounded-full pl-10"
+              placeholder="Rechercher par n°, objet ou entreprise"
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              aria-label="Rechercher un marché"
+            />
+          </div>
+          <div className="defilement -mx-3 flex gap-1.5 overflow-x-auto px-3 sm:mx-0 sm:px-0" role="group" aria-label="Filtrer par statut">
+            {["", ...STATUTS_MARCHE].map((st) => (
+              <button
+                key={st || "tous"}
+                onClick={() => setFiltre(st)}
+                aria-pressed={filtre === st}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                  filtre === st ? "bg-encre text-white" : "bg-white/70 text-slate-600 hover:bg-white"
+                }`}
+              >
+                {st || "Tous"}
+              </button>
+            ))}
+          </div>
         </div>
 
         {!donnees && !erreur && <div className="py-10 text-center text-sm text-slate-500">Chargement…</div>}
@@ -125,51 +147,55 @@ export default function Accueil() {
 function CarteMarche({ marche: m, s }: { marche: Marche; s: ReturnType<typeof syntheseMarche> }) {
   const j = s.delais.joursRestants;
   const lien = (onglet: string) => `/marches/${m.id}?onglet=${onglet}`;
+  const raccourcis = [
+    { o: "delais", label: "Délais", icone: CalendarClock },
+    { o: "documents", label: "Documents", icone: FileText },
+    { o: "physique", label: "Physique", icone: Ruler },
+    { o: "financier", label: "Financier", icone: Wallet },
+  ];
   return (
-    <div className="carte flex flex-col p-4">
+    <article className="carte flex flex-col p-5">
       <Link href={`/marches/${m.id}`} className="group block flex-1">
-        <div className="mb-1 flex items-start justify-between gap-2">
-          <span className="font-semibold text-slate-900 group-hover:text-marque-700">{m.numero}</span>
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <span className="text-lg font-semibold tracking-tight group-hover:underline">{m.numero}</span>
           <BadgeStatut statut={m.statut} />
         </div>
-        <p className="line-clamp-2 text-sm text-slate-700">{m.objet || "—"}</p>
+        <p className="line-clamp-2 text-[15px] leading-snug">{m.objet || "—"}</p>
         <p className="mt-1 text-xs text-slate-500">{m.entreprise || "Entreprise non renseignée"}</p>
-        <div className="mt-3 flex items-baseline justify-between text-sm">
-          <span className="font-medium tabular-nums">{formatMontant(montantMarche(m))} TTC</span>
-          <span className="text-xs text-slate-500">
-            Fin {formatDate(s.delais.finPrevue)}{" "}
-            {j !== null && s.enCours && (
-              <span className={j < 0 ? "font-semibold text-red-600" : "text-slate-700"}>
-                ({j < 0 ? `${-j} j de retard` : `${j} j restants`})
+        <div className="mt-4 flex items-end justify-between gap-2">
+          <div>
+            <p className="text-xs text-slate-500">Montant TTC</p>
+            <p className="font-semibold tabular-nums">{formatMontant(montantMarche(m))}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-slate-500">Fin prévue {formatDate(s.delais.finPrevue)}</p>
+            {j !== null && s.enCours ? (
+              <span className={`pastille mt-0.5 ${j < 0 ? "bg-rouge text-white" : "bg-bleu-pale text-bleu-texte"}`}>
+                {j < 0 ? `${-j} j de retard` : `${j} j restants`}
               </span>
+            ) : (
+              <span className="text-xs text-slate-400">—</span>
             )}
-          </span>
+          </div>
         </div>
-        <div className="mt-3 space-y-2">
-          <Barre label="Délai écoulé" valeur={s.delais.tempsEcoule} couleur={s.enRetard ? "bg-red-500" : "bg-slate-500"} />
+        <div className="mt-4 space-y-2.5">
+          <Barre label="Délai écoulé" valeur={s.delais.tempsEcoule} couleur={s.enRetard ? "bg-rouge" : "bg-slate-400"} />
           <Barre label="Avancement physique" valeur={s.physique.avancement} />
-          <Barre label="Avancement financier" valeur={s.finances.part} couleur="bg-emerald-500" />
+          <Barre label="Avancement financier" valeur={s.finances.part} couleur="bg-encre" />
         </div>
       </Link>
-      <div className="mt-4 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
-        <Link className="btn px-2 py-1 text-xs" href={lien("delais")}>
-          <CalendarClock size={13} /> Délais
-        </Link>
-        <Link className="btn px-2 py-1 text-xs" href={lien("documents")}>
-          <FileText size={13} /> Documents
-        </Link>
-        <Link className="btn px-2 py-1 text-xs" href={lien("physique")}>
-          <Ruler size={13} /> Physique
-        </Link>
-        <Link className="btn px-2 py-1 text-xs" href={lien("financier")}>
-          <Wallet size={13} /> Financier
-        </Link>
+      <div className="mt-4 flex items-center gap-1.5 border-t border-slate-200/60 pt-3">
+        {raccourcis.map((r) => (
+          <Link key={r.o} className="btn-rond h-9 w-9" href={lien(r.o)} title={r.label} aria-label={r.label}>
+            <r.icone size={15} />
+          </Link>
+        ))}
         {s.vigilance.length > 0 && (
-          <span className="ml-auto self-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-            {s.vigilance.length} point(s) à surveiller
-          </span>
+          <Link href={lien("apercu")} className="pastille ml-auto bg-rouge-pale text-rouge-fonce">
+            {s.vigilance.length} à surveiller
+          </Link>
         )}
       </div>
-    </div>
+    </article>
   );
 }

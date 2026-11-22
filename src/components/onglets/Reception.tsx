@@ -119,7 +119,7 @@ export function OngletReception({ dossier, recharger }: PropsOnglet) {
               {reserves.map((r) => {
                 const retard = reserveEnRetard(r, auj);
                 return (
-                  <tr key={r.id} className={retard ? "bg-red-50/60" : ""}>
+                  <tr key={r.id} className={retard ? "bg-rouge-pale/60" : ""}>
                     <td>{r.numero}</td>
                     <td>
                       <div className="font-medium">{r.designation}</div>
@@ -127,11 +127,11 @@ export function OngletReception({ dossier, recharger }: PropsOnglet) {
                     </td>
                     <td>{r.localisation || "—"}</td>
                     <td>{r.responsable}</td>
-                    <td className={retard ? "font-semibold text-red-600" : ""}>{formatDate(r.echeance)}</td>
+                    <td className={retard ? "font-semibold text-rouge-fonce" : ""}>{formatDate(r.echeance)}</td>
                     <td>
                       <span
                         className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
-                          r.statut === "Levée" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                          r.statut === "Levée" ? "bg-bleu-pale text-bleu-texte" : "bg-bleu-pale text-bleu-texte"
                         }`}
                       >
                         {r.statut}
@@ -145,14 +145,14 @@ export function OngletReception({ dossier, recharger }: PropsOnglet) {
                         aria-label={r.statut === "Ouverte" ? "Lever la réserve" : "Rouvrir la réserve"}
                         onClick={() => basculer(r)}
                       >
-                        {r.statut === "Ouverte" ? <Check size={16} className="text-emerald-600" /> : <RotateCcw size={15} />}
+                        {r.statut === "Ouverte" ? <Check size={16} className="text-bleu-texte" /> : <RotateCcw size={15} />}
                       </button>
                       <BoutonScan table="reserves" id={r.id} marcheId={marche.id} chemin={r.scan_path} onChange={recharger} />
                       <button className="btn-icone" aria-label="Modifier" onClick={() => setEdite(r)}>
                         <Pencil size={15} />
                       </button>
                       <button
-                        className="btn-icone hover:text-red-600"
+                        className="btn-icone hover:text-rouge-fonce"
                         aria-label="Supprimer"
                         onClick={async () => {
                           if (confirm(`Supprimer la réserve n° ${r.numero} ?`)) {

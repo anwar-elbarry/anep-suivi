@@ -2,8 +2,8 @@
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
-import { EnTete } from "@/components/EnTete";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { CLASSE_PAGE, EnTete } from "@/components/EnTete";
 import { FormulaireMarche } from "@/components/FormulaireMarche";
 import { MenuExport } from "@/components/MenuExport";
 import { GenererDocument } from "@/components/modeles/GenererDocument";
@@ -92,55 +92,49 @@ function FicheMarche() {
   return (
     <>
       <EnTete />
-      <main className="mx-auto max-w-7xl px-4 py-5">
-        <Link href="/" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
-          <ArrowLeft size={15} /> Tous les marchés
+      <main className={CLASSE_PAGE}>
+        <Link href="/" className="mb-3 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-encre">
+          <span className="btn-rond h-8 w-8">
+            <ArrowLeft size={15} />
+          </span>
+          Tous les marchés
         </Link>
         <Erreur message={erreur} />
         {dossier === undefined && !erreur && <div className="py-10 text-center text-sm text-slate-500">Chargement…</div>}
         {dossier === null && <div className="py-10 text-center text-sm text-slate-500">Marché introuvable.</div>}
         {dossier && props && (
           <>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-semibold">Marché {dossier.marche.numero}</h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-semibold sm:text-4xl">Marché {dossier.marche.numero}</h1>
                   <BadgeStatut statut={dossier.marche.statut} />
                 </div>
-                <p className="mt-0.5 text-sm text-slate-600">{dossier.marche.objet}</p>
-                <p className="text-xs text-slate-500">
+                <p className="mt-1 text-[15px] text-slate-700">{dossier.marche.objet}</p>
+                <p className="mt-0.5 text-sm text-slate-500">
                   {dossier.marche.entreprise || "Entreprise non renseignée"} · {formatMontant(montantMarche(dossier.marche))} TTC
-                  {dossier.marche.montant_avenants ? " (avec avenants)" : ""} ·{" "}
-                  {Number(dossier.marche.duree_mois)} mois
+                  {dossier.marche.montant_avenants ? " (avec avenants)" : ""} · {Number(dossier.marche.duree_mois)} mois
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <GenererDocument dossier={dossier} />
                 <ParametresCpsBouton marche={dossier.marche} recharger={recharger} />
                 <MenuExport dossier={dossier} />
-                <button className="btn" onClick={() => setEdition(true)}>
-                  <Pencil size={14} /> Modifier
+                <button className="btn-rond" onClick={() => setEdition(true)} title="Modifier le marché" aria-label="Modifier le marché">
+                  <Pencil size={16} />
                 </button>
-                <button className="btn-danger" onClick={supprimerMarche}>
-                  <Trash2 size={14} /> Supprimer
+                <button
+                  className="btn-rond text-rouge-fonce hover:bg-rouge-pale"
+                  onClick={supprimerMarche}
+                  title="Supprimer le marché"
+                  aria-label="Supprimer le marché"
+                >
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
 
-            <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Onglets du marché">
-              {ONGLETS.map((o) => (
-                <button
-                  key={o.id}
-                  onClick={() => allerA(o.id)}
-                  className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition ${
-                    onglet === o.id ? "border-marque-600 text-marque-700" : "border-transparent text-slate-500 hover:text-slate-800"
-                  }`}
-                  aria-current={onglet === o.id ? "page" : undefined}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </nav>
+            <BarreOnglets onglet={onglet} allerA={allerA} />
 
             {onglet === "apercu" && <OngletApercu {...props} />}
             {onglet === "intervenants" && <OngletIntervenants {...props} />}
@@ -168,5 +162,36 @@ function FicheMarche() {
         )}
       </main>
     </>
+  );
+}
+
+/** Onglets en pilules, collants sous l'en-tête ; défilement horizontal sur mobile, l'onglet actif reste visible. */
+function BarreOnglets({ onglet, allerA }: { onglet: string; allerA: (o: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const actif = ref.current?.querySelector<HTMLElement>("[aria-current='page']");
+    actif?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }, [onglet]);
+  return (
+    <div className="sticky top-[76px] z-30 -mx-3 mb-5 px-3 sm:mx-0 sm:px-0">
+      <nav
+        ref={ref}
+        className="carte defilement flex gap-1 overflow-x-auto rounded-full p-1.5"
+        aria-label="Onglets du marché"
+      >
+        {ONGLETS.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => allerA(o.id)}
+            className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
+              onglet === o.id ? "bg-encre text-white shadow" : "text-slate-600 hover:bg-white hover:text-encre"
+            }`}
+            aria-current={onglet === o.id ? "page" : undefined}
+          >
+            {o.label}
+          </button>
+        ))}
+      </nav>
+    </div>
   );
 }

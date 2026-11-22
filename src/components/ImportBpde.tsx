@@ -73,13 +73,13 @@ export function ImportBpde({ marcheId, nbExistant, onImporte }: { marcheId: stri
             <>
               <p className="mb-2 text-sm text-slate-600">
                 Feuille « {res.feuille} » : {res.lignes.length} ligne(s), total HT {formatMontant(total)}.
-                {nbExistant > 0 && <strong className="text-amber-700"> Le BPDE actuel ({nbExistant} lignes) sera remplacé.</strong>}
+                {nbExistant > 0 && <strong className="text-bleu-texte"> Le BPDE actuel ({nbExistant} lignes) sera remplacé.</strong>}
               </p>
               {res.colonnes.prix_unitaire === undefined && (
-                <p className="mb-1 text-sm text-amber-700">• Pas de colonne « Prix unitaire » : les prix seront à saisir dans l&apos;onglet BPDE et prix.</p>
+                <p className="mb-1 text-sm text-bleu-texte">• Pas de colonne « Prix unitaire » : les prix seront à saisir dans l&apos;onglet BPDE et prix.</p>
               )}
               {res.avertissements.map((a) => (
-                <p key={a} className="mb-1 text-sm text-amber-700">
+                <p key={a} className="mb-1 text-sm text-bleu-texte">
                   • {a}
                 </p>
               ))}
@@ -102,7 +102,7 @@ export function ImportBpde({ marcheId, nbExistant, onImporte }: { marcheId: stri
                         <td>{l.designation}</td>
                         <td>{l.unite}</td>
                         <td className="num">{formatQte(l.quantite)}</td>
-                        <td className={`num ${l.prix_unitaire === null ? "text-red-600" : ""}`}>{formatMontant(l.prix_unitaire)}</td>
+                        <td className={`num ${l.prix_unitaire === null ? "text-rouge-fonce" : ""}`}>{formatMontant(l.prix_unitaire)}</td>
                         <td className="num">{formatMontant(l.montant ?? l.quantite * (l.prix_unitaire ?? 0))}</td>
                       </tr>
                     ))}

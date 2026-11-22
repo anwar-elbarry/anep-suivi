@@ -45,7 +45,7 @@ export function OngletIntervenants({ dossier, recharger }: PropsOnglet) {
                     <Pencil size={15} />
                   </button>
                   <button
-                    className="btn-icone hover:text-red-600"
+                    className="btn-icone hover:text-rouge-fonce"
                     aria-label="Supprimer"
                     onClick={async () => {
                       if (confirm(`Supprimer ${i.nom} ?`)) {
