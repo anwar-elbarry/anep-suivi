@@ -1,5 +1,5 @@
 "use client";
-import { Download, LogOut, Upload } from "lucide-react";
+import { Download, FileStack, LogOut, Upload } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -57,7 +57,12 @@ export function EnTete({ children }: { children?: ReactNode }) {
           <Image src={logoAnep} alt="ANEP" height={36} priority />
           <span className="hidden border-l border-slate-200 pl-2.5 sm:inline">Suivi des travaux</span>
         </Link>
-        <div className="min-w-0 flex-1">{children}</div>
+        <nav className="min-w-0 flex-1">
+          <Link href="/modeles" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+            <FileStack size={16} /> <span className="hidden md:inline">Modèles de documents</span>
+          </Link>
+          {children}
+        </nav>
         <button className="btn" onClick={sauvegarder} disabled={occupe} title="Télécharger une sauvegarde JSON de toutes vos données">
           <Download size={15} /> <span className="hidden sm:inline">Sauvegarde</span>
         </button>

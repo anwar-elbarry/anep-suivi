@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { EnTete } from "@/components/EnTete";
 import { FormulaireMarche } from "@/components/FormulaireMarche";
 import { MenuExport } from "@/components/MenuExport";
+import { GenererDocument } from "@/components/modeles/GenererDocument";
 import { ParametresCpsBouton } from "@/components/ParametresCps";
 import { OngletApercu } from "@/components/onglets/Apercu";
 import { OngletAttachements } from "@/components/onglets/Attachements";
@@ -114,6 +115,7 @@ function FicheMarche() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <GenererDocument dossier={dossier} />
                 <ParametresCpsBouton marche={dossier.marche} recharger={recharger} />
                 <MenuExport dossier={dossier} />
                 <button className="btn" onClick={() => setEdition(true)}>

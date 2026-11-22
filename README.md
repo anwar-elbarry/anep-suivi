@@ -102,6 +102,29 @@ Onglet **Garanties** : cautions (provisoire, définitive, retenue de garantie, r
 avec organisme, référence, montant, dates et scan. Alerte 30 jours avant expiration, et alerte si une avance ou une retenue remplacée
 n'est pas couverte par la caution correspondante.
 
+## Modèles de documents
+
+Page **Modèles de documents** (lien dans l'en-tête) : déposez par glisser-déposer ou à l'aide du bouton vos modèles Word (.docx) ou
+Excel (.xlsx) — décomptes, bordereaux d'envoi, notes ou décisions de pénalités, courriers, bordereaux… La bibliothèque s'enrichit au fil
+du temps ; chaque modèle est classé par catégorie, téléchargeable pour modification et remplaçable.
+
+Depuis la fiche d'un marché, **Générer un document** remplit le modèle avec les données du marché et télécharge le fichier produit.
+Un modèle peut aussi être déposé directement dans cette fenêtre pour un usage ponctuel.
+
+Syntaxe (dans Word ou Excel) :
+
+| Besoin | Syntaxe |
+|---|---|
+| Donnée du marché | `{marche_numero}`, `{decompte_net_a_payer}`, `{penalites_montant_lettres}`… (liste complète dans « Données disponibles ») |
+| Tableau répété (Word) | dans une ligne de tableau : `{#lignes_decompte}` dans la première cellule, `{/lignes_decompte}` dans la dernière |
+| Condition (Word) | `{#en_retard}texte affiché si le délai est dépassé{/en_retard}` |
+| Champ à saisir | toute balise hors catalogue, ex. `{destinataire}` : demandée à la génération et mémorisée pour la fois suivante |
+
+Les montants en lettres suivent l'orthographe traditionnelle (« quatre-vingts », « deux cent mille », « deux cents millions ») et sont
+exprimés en dirhams. Excel : champs simples uniquement (pas de tableaux répétés). Le remplissage se fait dans le navigateur ;
+les modèles sont stockés dans le bucket privé `scans` (`<utilisateur>/modeles/`). Quatre modèles d'exemple sont fournis
+(`public/modeles-exemples/`) et s'ajoutent à la bibliothèque en un clic.
+
 ## Données
 
 Les données sont dans Supabase et accessibles depuis n'importe quel poste après connexion. Le bouton **Sauvegarde**
