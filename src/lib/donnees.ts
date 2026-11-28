@@ -1,4 +1,5 @@
 "use client";
+import { avecTypeMime, messageBase, messageStockage, TAILLE_MAX, verifierTaille } from "./fichiers";
 import { supabaseNavigateur } from "./supabase/client";
 import type {
   Activite,
@@ -18,8 +19,8 @@ import type {
 
 export const BUCKET = "scans";
 
-function verifier<T>(res: { data: T | null; error: { message: string } | null }): T {
-  if (res.error) throw new Error(res.error.message);
+function verifier<T>(res: { data: T | null; error: { message: string; code?: string } | null }): T {
+  if (res.error) throw new Error(messageBase(res.error));
   return res.data as T;
 }
 
@@ -126,7 +127,7 @@ export async function modifier(table: Table, id: string, valeurs: object) {
 
 export async function supprimer(table: Table, id: string) {
   const res = await supabaseNavigateur().from(table).delete().eq("id", id);
-  if (res.error) throw new Error(res.error.message);
+  if (res.error) throw new Error(messageBase(res.error));
 }
 
 export async function supprimerParMarche(table: Table, marcheId: string) {
@@ -146,16 +147,17 @@ function nettoyerNom(nom: string) {
     .slice(-80);
 }
 
-export const TAILLE_MAX = 20 * 1024 * 1024;
+export { TAILLE_MAX };
 
-export async function televerser(marcheId: string, dossier: "scans" | "cps", fichier: File): Promise<string> {
-  if (fichier.size > TAILLE_MAX) throw new Error("Fichier trop volumineux (20 Mo maximum)");
+export async function televerser(marcheId: string, dossier: "scans" | "cps" | "bpde", fichier: File): Promise<string> {
+  verifierTaille(fichier);
   const sb = supabaseNavigateur();
   const { data } = await sb.auth.getUser();
   if (!data.user) throw new Error("Session expirée, reconnectez-vous");
   const chemin = `${data.user.id}/${marcheId}/${dossier}/${crypto.randomUUID()}-${nettoyerNom(fichier.name)}`;
-  const { error } = await sb.storage.from(BUCKET).upload(chemin, fichier, { contentType: fichier.type || undefined });
-  if (error) throw new Error(error.message);
+  // Le stockage se fie au type porté par le fichier : on le fixe d'après l'extension (souvent vide côté navigateur).
+  const { error } = await sb.storage.from(BUCKET).upload(chemin, avecTypeMime(fichier, fichier.name));
+  if (error) throw new Error(messageStockage(error.message));
   return chemin;
 }
 
@@ -179,16 +181,54 @@ export function normaliserPourDoublon(s: string) {
     .trim();
 }
 
+let etatIA: Promise<boolean> | null = null;
+
+/** Indique si les fonctions Claude sont activées sur le serveur (clé API renseignée). */
+export function iaActivee(): Promise<boolean> {
+  etatIA ??= fetch("/api/ia/etat")
+    .then((r) => (r.ok ? r.json() : { configuree: true })) // session expirée, etc. : l'appel suivant donnera l'erreur exacte
+    .then((j) => Boolean(j.configuree))
+    .catch(() => {
+      etatIA = null;
+      return true; // état inconnu : l'appel lui-même donnera l'erreur exacte
+    });
+  return etatIA;
+}
+
+export const MESSAGE_IA_INACTIVE =
+  "Fonctions Claude non activées : la variable ANTHROPIC_API_KEY n'est pas renseignée sur le serveur (hébergeur > variables d'environnement, puis redéploiement).";
+
+/** À appeler avant d'envoyer un fichier pour analyse : évite un dépôt inutile si Claude n'est pas activé. */
+export async function exigerIA() {
+  if (!(await iaActivee())) throw new Error(MESSAGE_IA_INACTIVE);
+}
+
+/** Appelle une route Claude et renvoie sa réponse JSON. */
+export async function appelerRouteIA<T>(route: string, corps: object): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/ia/${route}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(corps),
+    });
+  } catch {
+    throw new Error("Connexion interrompue pendant l'analyse : vérifiez le réseau et réessayez.");
+  }
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json) {
+    if (json?.erreur) throw new Error(json.erreur);
+    if (res.status === 504 || res.status === 408) throw new Error("Analyse trop longue pour le serveur (délai dépassé) : réessayez avec un document plus court ou découpé.");
+    if (res.status === 413) throw new Error("Contenu trop volumineux pour le serveur.");
+    throw new Error(`Erreur ${res.status}`);
+  }
+  return json as T;
+}
+
 /** Appelle une route Claude et renvoie les documents proposés. */
 export async function appelerIA(route: "documents-cps" | "documents-attachement", corps: object) {
-  const res = await fetch(`/api/ia/${route}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(corps),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.erreur ?? `Erreur ${res.status}`);
-  return json.documents as import("./types").PropositionDocument[];
+  const json = await appelerRouteIA<{ documents: import("./types").PropositionDocument[] }>(route, corps);
+  return json.documents;
 }
 
 export const supabaseClient = supabaseNavigateur;

@@ -13,7 +13,9 @@ attachements, documents à fournir, BPDE, état physique, décomptes, révision 
 2. Appliquez le schéma : exécutez **dans l'ordre** les fichiers de `supabase/migrations/` dans l'éditeur SQL du projet,
    ou avec la CLI : `supabase link --project-ref <ref>` puis `supabase db push`.
    Le script crée les tables, la sécurité par ligne (chaque utilisateur ne voit que ses données), le journal d'activité
-   et le bucket privé `scans` (20 Mo par fichier).
+   et le bucket privé `scans` (50 Mo par fichier). **Après chaque mise à jour de l'application, appliquez les nouveaux fichiers**
+   de `supabase/migrations/` : sans cela, les fonctions ajoutées affichent « Base de données à mettre à jour ».
+   Dans Supabase > Storage > Settings, la « Global file size limit » doit être d'au moins 50 Mo (maximum de l'offre gratuite).
 3. Dans Supabase > Authentication > URL Configuration, ajoutez `http://localhost:3000/auth/callback`
    (et l'URL de production) aux « Redirect URLs ».
 4. Copiez `.env.example` en `.env.local` et renseignez les clés.
@@ -34,7 +36,9 @@ Tests des calculs : `npm test`.
 | `src/lib/donnees.ts` | Accès Supabase côté navigateur (lecture d'un dossier, CRUD, fichiers) |
 | `src/lib/excel.ts` | Lecture des fichiers Excel (BPDE, attachements) avec détection des en-têtes |
 | `src/lib/ia.ts` | Appel à Claude (sortie structurée validée par Zod) |
-| `src/app/api/ia/*` | Routes serveur : documents depuis un attachement, documents depuis le CPS |
+| `src/lib/fichiers.ts` | Taille maximale, type des fichiers déposés, messages d'erreur du stockage |
+| `src/lib/pdf.ts` | Découpage des PDF longs en lots de 100 pages avant lecture par Claude |
+| `src/app/api/ia/*` | Routes serveur : paramètres et documents depuis le CPS, documents depuis un attachement, lecture du bordereau, création de modèle, état |
 | `src/components/onglets/*` | Les dix onglets de la fiche marché |
 | `supabase/migrations/` | Schéma SQL, RLS, triggers, stockage |
 
@@ -75,10 +79,23 @@ L'application ne connaît ni votre CPS, ni la version du CCAG-T applicable, ni v
 - **Depuis un attachement** : propose, par type de prestation, les documents à fournir (fiches techniques, méthodologies,
   PV d'essais, agréments, garanties…).
 - **Depuis le CPS** (PDF, Word .docx ou texte) : propose un document par exigence technique, avec l'article du CPS quand il est
-  identifiable. Les PDF sont lus directement par Claude, y compris les PDF scannés (jusqu'à 20 Mo, limite du stockage).
+  identifiable. Les PDF sont lus directement par Claude, y compris les PDF scannés (jusqu'à 50 Mo par défaut).
+  Un PDF de plus de 100 pages est lu par lots de 100 pages, puis les résultats sont fusionnés (600 pages au maximum).
   Le CPS est supprimé du stockage après analyse.
+- **Bordereau des prix** (onglet BPDE) : un classeur Excel est lu directement ; un PDF, un scan ou une photo du bordereau est
+  transcrit par Claude (numéro, désignation, unité, quantité, prix unitaire, prix total). Les lignes dont le prix total écrit
+  diffère de quantité × prix unitaire sont signalées en rouge dans l'aperçu. Si les colonnes d'un classeur ne sont pas reconnues,
+  sa lecture par Claude est proposée. Le fichier n'est pas conservé.
 
 Rien n'est ajouté sans validation : la liste proposée est relue et cochée avant import. Ce sont des suggestions, à contrôler.
+Une lecture de scan peut comporter des erreurs de chiffres : le bordereau importé est à pointer sur le document signé.
+
+Ces fonctions nécessitent la variable `ANTHROPIC_API_KEY` côté serveur ; sans elle, l'interface l'indique avant tout envoi de fichier.
+
+### Taille des fichiers
+
+50 Mo par fichier par défaut (scans, CPS, bordereaux, modèles). Pour relever la limite : variable `NEXT_PUBLIC_TAILLE_MAX_MO`,
+`file_size_limit` du bucket `scans` et « Global file size limit » du projet Supabase (les trois doivent concorder).
 
 ## Exports
 
@@ -89,6 +106,11 @@ Menu **Exporter** de la fiche marché :
   fiche de synthèse, liste des documents à fournir. Chaque décompte enregistré s'imprime depuis l'onglet Financier.
 
 Chaque document imprimé porte la mention « document de travail, ne vaut pas décompte officiel ».
+
+## Ordres de service
+
+Onglet **Délais et OS** : chaque ordre de service (démarrage, arrêt, reprise, prolongation) peut porter le scan de l'OS signé ou notifié
+(PDF ou photo), joint à la création dans le formulaire ou ensuite par le trombone de la colonne « Scan ».
 
 ## Avenants et réception
 

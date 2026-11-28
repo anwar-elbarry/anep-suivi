@@ -2,8 +2,9 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { aujourdhuiUtc, calculerDelais, calculerPenalites, dateEffetOS, formatDate, formatMontant } from "@/lib/calculs";
-import { modifier, supprimer } from "@/lib/donnees";
+import { modifier, supprimer, supprimerFichier } from "@/lib/donnees";
 import { BASES_PENALITE, TYPES_OS, type OrdreService } from "@/lib/types";
+import { BoutonScan } from "../BoutonScan";
 import { FormulaireLigne, type DefChamp } from "../FormulaireLigne";
 import { ParametreDate, ParametreNombre } from "../ParametreMarche";
 import { Chiffre, Vide } from "../ui";
@@ -16,6 +17,7 @@ const CHAMPS: DefChamp[] = [
   { cle: "date_notification", label: "Date de notification", type: "date" },
   { cle: "jours_supplementaires", label: "Jours supplémentaires (prolongation)", type: "nombre" },
   { cle: "objet", label: "Objet / motif", type: "zone" },
+  { cle: "scan_path", label: "Scan de l'OS signé / notifié", type: "fichier" },
 ];
 
 const COULEURS: Record<string, string> = {
@@ -70,7 +72,7 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
         </div>
         {ordres.length === 0 ? (
           <div className="p-4">
-            <Vide>Enregistrez l&apos;OS de démarrage, puis les OS d&apos;arrêt, de reprise et de prolongation.</Vide>
+            <Vide>Enregistrez l&apos;OS de démarrage, puis les OS d&apos;arrêt, de reprise et de prolongation, avec le scan de chaque OS notifié.</Vide>
           </div>
         ) : (
           <table className="tableau">
@@ -82,6 +84,7 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
                 <th>Notification</th>
                 <th className="num">Jours supp.</th>
                 <th>Objet</th>
+                <th>Scan</th>
                 <th />
               </tr>
             </thead>
@@ -96,6 +99,9 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
                   <td>{formatDate(o.date_notification)}</td>
                   <td className="num">{o.jours_supplementaires || "—"}</td>
                   <td className="max-w-md text-slate-600">{o.objet}</td>
+                  <td className="whitespace-nowrap">
+                    <BoutonScan table="ordres_service" id={o.id} marcheId={dossier.marche.id} chemin={o.scan_path ?? null} onChange={recharger} />
+                  </td>
                   <td className="whitespace-nowrap text-right">
                     <button className="btn-icone" aria-label="Modifier" onClick={() => setEdite(o)}>
                       <Pencil size={15} />
@@ -106,6 +112,7 @@ export function OngletDelais({ dossier, recharger }: PropsOnglet) {
                       onClick={async () => {
                         if (confirm("Supprimer cet ordre de service ?")) {
                           await supprimer("ordres_service", o.id);
+                          await supprimerFichier(o.scan_path);
                           recharger();
                         }
                       }}

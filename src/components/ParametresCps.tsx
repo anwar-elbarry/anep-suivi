@@ -2,7 +2,7 @@
 import { Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 import { formatMontant } from "@/lib/calculs";
-import { modifier, supprimerFichier, televerser } from "@/lib/donnees";
+import { appelerRouteIA, exigerIA, modifier, supprimerFichier, televerser } from "@/lib/donnees";
 import type { ParametresCps } from "@/lib/schemasIA";
 import { BASES_PENALITE, type BasePenalite, type IndiceRevision, type Marche } from "@/lib/types";
 import { Erreur, Modal } from "./ui";
@@ -109,23 +109,17 @@ export function ParametresCpsBouton({ marche, recharger }: { marche: Marche; rec
     setErreur(null);
     const ext = f.name.toLowerCase().split(".").pop();
     if (!["pdf", "docx", "txt"].includes(ext ?? "")) {
-      setErreur("Format non pris en charge : PDF, Word (.docx) ou texte.");
+      setErreur("Format non pris en charge : PDF, Word (.docx) ou texte. Les anciens fichiers .doc doivent être enregistrés en .docx.");
       setResultat({ lignes: [], remarques: [], prixFermes: false });
       return;
     }
     try {
+      await exigerIA();
       setEtat("Envoi du CPS…");
       const chemin = await televerser(marche.id, "cps", f);
       setEtat("Claude lit le CPS… (jusqu'à quelques minutes)");
       try {
-        const res = await fetch("/api/ia/parametres-cps", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ marcheId: marche.id, chemin }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json.erreur ?? `Erreur ${res.status}`);
-        const p = json.parametres as ParametresCps;
+        const { parametres: p } = await appelerRouteIA<{ parametres: ParametresCps }>("parametres-cps", { marcheId: marche.id, chemin });
         const lignes = construireLignes(p, marche);
         setChoix(Object.fromEntries(lignes.map((l) => [l.cle, l.actuel !== l.propose])));
         setResultat({ lignes, remarques: p.remarques, prixFermes: p.revision.applicable === false });

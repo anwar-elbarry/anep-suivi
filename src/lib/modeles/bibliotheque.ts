@@ -1,5 +1,6 @@
 "use client";
-import { BUCKET, TAILLE_MAX } from "../donnees";
+import { BUCKET } from "../donnees";
+import { avecTypeMime, messageBase, messageStockage, verifierTaille } from "../fichiers";
 import { supabaseNavigateur } from "../supabase/client";
 import { analyserModele, formatDuFichier, type Analyse, type FormatModele } from "./moteur";
 
@@ -41,8 +42,8 @@ export const EXEMPLES = [
   { fichier: "situation-marche.xlsx", nom: "Situation du marché (exemple Excel)", categorie: "Tableau Excel", description: "Indicateurs clés dans un classeur." },
 ];
 
-function verifier<T>(res: { data: T | null; error: { message: string } | null }): T {
-  if (res.error) throw new Error(res.error.message);
+function verifier<T>(res: { data: T | null; error: { message: string; code?: string } | null }): T {
+  if (res.error) throw new Error(messageBase(res.error));
   return res.data as T;
 }
 
@@ -59,7 +60,7 @@ export async function chargerFichierModele(chemin: string): Promise<ArrayBuffer>
 export async function lireFichier(fichier: File): Promise<{ buffer: ArrayBuffer; format: FormatModele; analyse: Analyse }> {
   const format = formatDuFichier(fichier.name);
   if (!format) throw new Error(`« ${fichier.name} » : seuls les fichiers Word (.docx) et Excel (.xlsx) sont acceptés. Enregistrez les .doc / .xls au nouveau format.`);
-  if (fichier.size > TAILLE_MAX) throw new Error(`« ${fichier.name} » dépasse 20 Mo.`);
+  verifierTaille(fichier);
   const buffer = await fichier.arrayBuffer();
   return { buffer, format, analyse: analyserModele(buffer, format) };
 }
@@ -81,8 +82,9 @@ export async function enregistrerModele(
   const { data } = await sb.auth.getUser();
   if (!data.user) throw new Error("Session expirée, reconnectez-vous");
   const chemin = `${data.user.id}/modeles/${crypto.randomUUID()}-${nettoyer(nomFichier)}`;
-  const { error } = await sb.storage.from(BUCKET).upload(chemin, fichier, { contentType: fichier.type || undefined });
-  if (error) throw new Error(error.message);
+  // Le stockage se fie au type porté par le fichier : on le fixe d'après l'extension (souvent vide côté navigateur).
+  const { error } = await sb.storage.from(BUCKET).upload(chemin, avecTypeMime(fichier, nomFichier));
+  if (error) throw new Error(messageStockage(error.message));
   const res = await sb
     .from("modeles")
     .insert({
@@ -96,7 +98,7 @@ export async function enregistrerModele(
     .single();
   if (res.error) {
     await sb.storage.from(BUCKET).remove([chemin]);
-    throw new Error(res.error.message);
+    throw new Error(messageBase(res.error));
   }
   return res.data as Modele;
 }
@@ -108,7 +110,7 @@ export async function modifierModele(id: string, valeurs: Partial<Pick<Modele, "
 export async function supprimerModele(m: Modele) {
   const sb = supabaseNavigateur();
   const res = await sb.from("modeles").delete().eq("id", m.id);
-  if (res.error) throw new Error(res.error.message);
+  if (res.error) throw new Error(messageBase(res.error));
   await sb.storage.from(BUCKET).remove([m.chemin]);
 }
 

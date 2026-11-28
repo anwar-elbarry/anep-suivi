@@ -38,6 +38,7 @@ export function versNombre(v: unknown): number | null {
 
 export interface ResultatImport {
   lignes: LigneImportee[];
+  /** Feuille du classeur lue ; vide si le bordereau a été lu par Claude (PDF, scan, photo). */
   feuille: string;
   colonnes: Partial<Record<keyof LigneImportee, string>>;
   avertissements: string[];
@@ -93,4 +94,14 @@ export async function lireExcel(fichier: File): Promise<ResultatImport> {
   if (meilleur.colonnes.numero === undefined) meilleur.avertissements.push("Pas de colonne « N° » : rapprochement par désignation uniquement.");
   if (meilleur.colonnes.unite === undefined) meilleur.avertissements.push("Pas de colonne « Unité ».");
   return meilleur;
+}
+
+/** Contenu brut d'un classeur, feuille par feuille, pour une lecture par Claude quand les en-têtes ne sont pas reconnus. */
+export async function excelEnTexte(fichier: File, limite = 600_000): Promise<string> {
+  const wb = XLSX.read(await fichier.arrayBuffer(), { type: "array" });
+  const texte = wb.SheetNames.map((nom) => `### Feuille « ${nom} »\n${XLSX.utils.sheet_to_csv(wb.Sheets[nom], { FS: ";", blankrows: false })}`)
+    .join("\n\n")
+    .replace(/;{3,}/g, ";;"); // colonnes vides en série : sans intérêt pour la lecture
+  if (texte.length > limite) throw new Error("Classeur trop volumineux pour une lecture par Claude : ne gardez que la feuille du bordereau.");
+  return texte;
 }

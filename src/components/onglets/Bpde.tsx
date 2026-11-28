@@ -66,7 +66,10 @@ export function OngletBpde({ dossier, recharger }: PropsOnglet) {
       </div>
 
       {bpde.length === 0 ? (
-        <Vide>Importez le BPDE (Excel : N°, désignation, unité, quantité, prix unitaire) ou saisissez les lignes.</Vide>
+        <Vide>
+          Importez le BPDE (Excel avec les colonnes N°, désignation, unité, quantité, prix unitaire ; ou PDF, scan, photo du bordereau lus par Claude) ou saisissez
+          les lignes.
+        </Vide>
       ) : (
         <div className="carte overflow-x-auto">
           <table className="tableau">
