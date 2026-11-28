@@ -6,7 +6,7 @@ import { construireDocxBuffer } from "./construireDocx";
 import { analyserModele, genererDocument } from "./moteur";
 import { promptExterne } from "./prompt";
 
-const vide = { texte: null, niveau: null, alignement: null, gras: null, lignes: null, liste: null, colonnes: null, elements: null, cadres: null };
+const vide = { texte: "", niveau: 0, alignement: "defaut", gras: false, lignes: [], liste: "aucune", colonnes: [], elements: [], cadres: [] };
 
 const modele: ModeleIA = SchemaModeleIA.parse({
   nom: "Bordereau d'envoi des réserves",

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { lireCps } from "@/lib/cps";
+import { lireSource } from "@/lib/cps";
 import { ErreurIA, extraireParametres } from "@/lib/ia";
 import { supabaseServeur } from "@/lib/supabase/server";
 
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!marche) return NextResponse.json({ erreur: "Marché introuvable" }, { status: 404 });
 
   try {
-    const source = await lireCps(supabase, auth.user.id, marcheId, chemin);
+    const source = await lireSource(supabase, auth.user.id, marcheId, chemin);
     const parametres = await extraireParametres(source, `Marché ${marche.numero} : ${marche.objet}.`);
     return NextResponse.json({ parametres });
   } catch (e) {

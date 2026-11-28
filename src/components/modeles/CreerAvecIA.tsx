@@ -1,6 +1,7 @@
 "use client";
 import { Check, ChevronDown, ChevronRight, Copy, Download, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { appelerRouteIA, iaActivee, MESSAGE_IA_INACTIVE } from "@/lib/donnees";
 import { CATEGORIES_MODELE, enregistrerModele } from "@/lib/modeles/bibliotheque";
 import { construireDocx } from "@/lib/modeles/construireDocx";
 import { analyserModele, telecharger, type Analyse } from "@/lib/modeles/moteur";
@@ -58,6 +59,16 @@ export function CreerAvecIA({
   const [etat, setEtat] = useState<string | null>(null);
   const [resultat, setResultat] = useState<{ modele: ModeleIA; blob: Blob; analyse: Analyse } | null>(null);
   const [nom, setNom] = useState("");
+  /** null : état inconnu (vérification en cours) ; false : clé API absente du serveur. */
+  const [claudeActif, setClaudeActif] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let actif = true;
+    iaActivee().then((ok) => actif && setClaudeActif(ok));
+    return () => {
+      actif = false;
+    };
+  }, []);
 
   const prompt = useMemo(() => promptExterne({ categorie, description, entete }), [categorie, description, entete]);
 
@@ -81,14 +92,7 @@ export function CreerAvecIA({
     }
     setEtat("Claude conçoit le modèle…");
     try {
-      const res = await fetch("/api/ia/modele", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categorie, description, entete: entete || undefined }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.erreur ?? `Erreur ${res.status}`);
-      const modele = json.modele as ModeleIA;
+      const { modele } = await appelerRouteIA<{ modele: ModeleIA }>("modele", { categorie, description, entete: entete || undefined });
       setEtat("Construction du fichier Word…");
       const blob = await construireDocx(modele);
       const analyse = analyserModele(await blob.arrayBuffer(), "docx");
@@ -170,10 +174,15 @@ export function CreerAvecIA({
             <button className="btn flex-1" onClick={copier}>
               {copie ? <Check size={15} className="text-bleu-texte" /> : <Copy size={15} />} {copie ? "Prompt copié" : "Copier le prompt"}
             </button>
-            <button className="btn-primaire flex-1" onClick={generer} disabled={!!etat}>
+            <button className="btn-primaire flex-1" onClick={generer} disabled={!!etat || claudeActif === false}>
               <Sparkles size={15} className={etat ? "animate-pulse" : ""} /> {etat ?? "Générer avec Claude"}
             </button>
           </div>
+          {claudeActif === false && (
+            <p className="rounded-2xl border border-bleu/30 bg-bleu-pale px-3 py-2 text-xs text-bleu-texte">
+              {MESSAGE_IA_INACTIVE} En attendant, « Copier le prompt » reste utilisable avec l&apos;agent IA de votre choix.
+            </p>
+          )}
           <button className="inline-flex items-center gap-1 text-xs text-bleu-texte hover:underline" onClick={() => setVoirPrompt(!voirPrompt)}>
             {voirPrompt ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Voir le prompt complet
           </button>
@@ -251,7 +260,7 @@ function ApercuBlocs({ modele }: { modele: ModeleIA }) {
             return (
               <table key={i} className="my-1 w-full border-collapse text-xs">
                 <tbody>
-                  {(b.lignes ?? []).map((l, j) => (
+                  {b.lignes.map((l, j) => (
                     <tr key={j}>
                       <td className="w-2/5 border border-slate-200 px-2 py-0.5 font-medium">{l.libelle}</td>
                       <td className="border border-slate-200 px-2 py-0.5 text-bleu-texte">{l.valeur}</td>
@@ -265,7 +274,7 @@ function ApercuBlocs({ modele }: { modele: ModeleIA }) {
               <table key={i} className="my-1 w-full border-collapse text-xs">
                 <thead>
                   <tr>
-                    {(b.colonnes ?? []).map((c, j) => (
+                    {b.colonnes.map((c, j) => (
                       <th key={j} className="border border-slate-200 bg-slate-50 px-2 py-0.5 text-left">
                         {c.entete}
                       </th>
@@ -274,7 +283,7 @@ function ApercuBlocs({ modele }: { modele: ModeleIA }) {
                 </thead>
                 <tbody>
                   <tr>
-                    {(b.colonnes ?? []).map((c, j) => (
+                    {b.colonnes.map((c, j) => (
                       <td key={j} className="border border-slate-200 px-2 py-0.5 text-bleu-texte">
                         {`{${c.champ.replace(/[{}]/g, "")}}`}
                       </td>
@@ -286,7 +295,7 @@ function ApercuBlocs({ modele }: { modele: ModeleIA }) {
           case "liste":
             return (
               <ul key={i} className="mb-1 list-disc pl-5">
-                {(b.elements ?? []).map((e, j) => (
+                {b.elements.map((e, j) => (
                   <li key={j}>{e}</li>
                 ))}
               </ul>
@@ -294,7 +303,7 @@ function ApercuBlocs({ modele }: { modele: ModeleIA }) {
           case "signatures":
             return (
               <p key={i} className="mt-2 text-xs text-slate-500">
-                Signatures : {(b.cadres ?? []).join(" · ")}
+                Signatures : {b.cadres.join(" · ")}
               </p>
             );
           default:

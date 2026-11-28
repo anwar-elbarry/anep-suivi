@@ -2,7 +2,7 @@
 import { FileSearch, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { aujourdhuiUtc, documentEnRetard, formatDate } from "@/lib/calculs";
-import { appelerIA, modifier, supprimer, supprimerFichier, televerser } from "@/lib/donnees";
+import { appelerIA, exigerIA, modifier, supprimer, supprimerFichier, televerser } from "@/lib/donnees";
 import { STATUTS_DOCUMENT, type DocumentAFournir, type PropositionDocument, type StatutDocument } from "@/lib/types";
 import { BoutonScan } from "../BoutonScan";
 import { FormulaireLigne, type DefChamp } from "../FormulaireLigne";
@@ -47,6 +47,7 @@ export function OngletDocuments({ dossier, recharger }: PropsOnglet) {
       return;
     }
     try {
+      await exigerIA();
       setAnalyse("Envoi du CPS…");
       const chemin = await televerser(dossier.marche.id, "cps", f);
       setAnalyse("Claude lit le CPS et recense les documents exigés… (jusqu'à quelques minutes)");

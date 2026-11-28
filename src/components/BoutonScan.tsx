@@ -2,6 +2,7 @@
 import { Paperclip, Eye, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { modifier, ouvrirFichier, supprimerFichier, televerser } from "@/lib/donnees";
+import { TAILLE_MAX_MO } from "@/lib/fichiers";
 
 /** Joindre / ouvrir / retirer le scan (PDF ou photo) d'une ligne. */
 export function BoutonScan({
@@ -11,7 +12,7 @@ export function BoutonScan({
   chemin,
   onChange,
 }: {
-  table: "documents" | "pv_reunions" | "garanties" | "avenants" | "reserves";
+  table: "documents" | "pv_reunions" | "garanties" | "avenants" | "reserves" | "ordres_service";
   id: string;
   marcheId: string;
   chemin: string | null;
@@ -24,7 +25,12 @@ export function BoutonScan({
     setOccupe(true);
     try {
       const nouveau = await televerser(marcheId, "scans", f);
-      await modifier(table, id, { scan_path: nouveau });
+      try {
+        await modifier(table, id, { scan_path: nouveau });
+      } catch (e) {
+        await supprimerFichier(nouveau); // pas de fichier orphelin si l'enregistrement échoue
+        throw e;
+      }
       await supprimerFichier(chemin);
       onChange();
     } catch (e) {
@@ -41,6 +47,8 @@ export function BoutonScan({
       await modifier(table, id, { scan_path: null });
       await supprimerFichier(chemin);
       onChange();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
     } finally {
       setOccupe(false);
     }
@@ -58,7 +66,7 @@ export function BoutonScan({
           </button>
         </>
       ) : (
-        <button className="btn-icone" title="Joindre un scan (PDF ou photo, 20 Mo max.)" aria-label="Joindre un scan" onClick={() => entree.current?.click()} disabled={occupe}>
+        <button className="btn-icone" title={`Joindre un scan (PDF ou photo, ${TAILLE_MAX_MO} Mo max.)`} aria-label="Joindre un scan" onClick={() => entree.current?.click()} disabled={occupe}>
           <Paperclip size={16} className={occupe ? "animate-pulse" : ""} />
         </button>
       )}

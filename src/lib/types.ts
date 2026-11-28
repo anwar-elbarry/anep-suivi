@@ -136,6 +136,8 @@ export interface OrdreService {
   date_notification: string | null;
   jours_supplementaires: number;
   objet: string;
+  /** Absent tant que la migration « scans_os » n'est pas appliquée. */
+  scan_path?: string | null;
 }
 
 export interface PvReunion {

@@ -49,14 +49,14 @@ function tableau(lignes: TableRow[], colonnes: number[]) {
 const nomChamp = (c: string) => c.replace(/[{}#/\s]/g, "");
 
 function bloc(b: BlocModeleIA): (Paragraph | Table)[] {
-  const align = b.alignement ? ALIGN[b.alignement] : undefined;
+  const align = b.alignement === "defaut" ? undefined : ALIGN[b.alignement];
   switch (b.type) {
     case "titre":
       return [
         new Paragraph({
           alignment: align ?? (b.niveau === 2 ? AlignmentType.LEFT : AlignmentType.CENTER),
           spacing: { before: b.niveau === 2 ? 240 : 120, after: 120 },
-          children: [new TextRun({ text: b.texte ?? "", bold: true, size: b.niveau === 2 ? 24 : 30 })],
+          children: [new TextRun({ text: b.texte, bold: true, size: b.niveau === 2 ? 24 : 30 })],
         }),
       ];
     case "paragraphe":
@@ -64,18 +64,18 @@ function bloc(b: BlocModeleIA): (Paragraph | Table)[] {
         new Paragraph({
           alignment: align,
           spacing: { after: 120 },
-          children: (b.texte ?? "").split("\n").map((t, i) => new TextRun({ text: t, bold: b.gras ?? false, break: i ? 1 : 0, size: 21 })),
+          children: b.texte.split("\n").map((t, i) => new TextRun({ text: t, bold: b.gras, break: i ? 1 : 0, size: 21 })),
         }),
       ];
     case "infos": {
-      const lignes = (b.lignes ?? []).map(
+      const lignes = b.lignes.map(
         (l) => new TableRow({ children: [cellule(l.libelle, { largeur: 3600, gras: true }), cellule(l.valeur, { largeur: LARGEUR - 3600 })] }),
       );
       return lignes.length ? [tableau(lignes, [3600, LARGEUR - 3600]), new Paragraph({})] : [];
     }
     case "tableau": {
-      const cols = b.colonnes ?? [];
-      if (!b.liste || !cols.length) return [];
+      const cols = b.colonnes;
+      if (b.liste === "aucune" || !cols.length) return [];
       const l = Math.floor(LARGEUR / cols.length);
       const larg = cols.map(() => l);
       const entete = new TableRow({ tableHeader: true, children: cols.map((c, i) => cellule(c.entete, { largeur: larg[i], entete: true })) });
@@ -89,9 +89,9 @@ function bloc(b: BlocModeleIA): (Paragraph | Table)[] {
       return [tableau([entete, modele], larg), new Paragraph({})];
     }
     case "liste":
-      return (b.elements ?? []).map((t) => new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: t, size: 21 })] }));
+      return b.elements.map((t) => new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: t, size: 21 })] }));
     case "signatures": {
-      const cadres = b.cadres?.length ? b.cadres : ["Établi par", "Visa"];
+      const cadres = b.cadres.length ? b.cadres : ["Établi par", "Visa"];
       const l = Math.floor(LARGEUR / cadres.length);
       const cellules = cadres.map(
         (c) =>
